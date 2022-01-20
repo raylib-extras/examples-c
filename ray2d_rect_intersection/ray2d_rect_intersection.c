@@ -44,13 +44,13 @@ bool RayIntersectRect(Rectangle rect, Vector2 origin, Vector2 direction, Vector2
 		maxParam = min(maxParam, max(tyMin, tyMax));
 	}
 
-	// if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
+	// if maxParam < 0, ray is intersecting AABB, but the whole AABB is behind us
 	if (maxParam < 0)
 	{
 		return false;
 	}
 
-	// if tmin > tmax, ray doesn't intersect AABB
+	// if minParam > maxParam, ray doesn't intersect AABB
 	if (minParam > maxParam)
 	{
 		return false;
@@ -61,8 +61,6 @@ bool RayIntersectRect(Rectangle rect, Vector2 origin, Vector2 direction, Vector2
 		*point = Vector2Add(origin, Vector2Scale(direction, minParam));
 	}
 	return true;
-
-	return maxParam >= minParam;
 }
 
 int main(void)
