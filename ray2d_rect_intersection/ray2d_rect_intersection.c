@@ -22,7 +22,7 @@
 // intersection using the slab method
 // https://tavianator.com/2011/ray_box.html#:~:text=The%20fastest%20method%20for%20performing,remains%2C%20it%20intersected%20the%20box.
 
-bool RayIntersectRect(Rectangle rect, Vector2 origin, Vector2 direction)
+bool RayIntersectRect(Rectangle rect, Vector2 origin, Vector2 direction, Vector2* point)
 {
 	float minParam = -INFINITY, maxParam = INFINITY;
 
@@ -44,6 +44,24 @@ bool RayIntersectRect(Rectangle rect, Vector2 origin, Vector2 direction)
 		maxParam = min(maxParam, max(tyMin, tyMax));
 	}
 
+	// if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
+	if (maxParam < 0)
+	{
+		return false;
+	}
+
+	// if tmin > tmax, ray doesn't intersect AABB
+	if (minParam > maxParam)
+	{
+		return false;
+	}
+
+	if (point != NULL)
+	{
+		*point = Vector2Add(origin, Vector2Scale(direction, minParam));
+	}
+	return true;
+
 	return maxParam >= minParam;
 }
 
@@ -52,13 +70,13 @@ int main(void)
 	const int screenWidth = 800;
 	const int screenHeight = 450;
 
-	InitWindow(screenWidth, screenHeight, "raylib extras [Math2d] example - ray rect intersecction");
+	InitWindow(screenWidth, screenHeight, "raylib extras [Math2d] example - ray rect intersection");
 
 	SetTargetFPS(60); 
 
-	Rectangle rect = { 100,100,100,100 };
+	Rectangle rect = { 100,100,200,50 };
 
-	Vector2 origin = { 250,300 };
+	Vector2 origin = { 450,300 };
 	Vector2 direction = { 0, -1 };
 
 	// Main game loop
@@ -70,15 +88,24 @@ int main(void)
 		if (IsKeyDown(KEY_RIGHT))
 			angleDelta += GetFrameTime() * -90;
 
+
+		Vector2 intersect;
 		Matrix rotMat = MatrixRotateZ(angleDelta * DEG2RAD);
 		direction = Vector2Transform(direction, rotMat);
 
 		BeginDrawing();
 		ClearBackground(BLACK);
 
-		DrawRectangleRec(rect, RayIntersectRect(rect, origin, direction) ? RED : GRAY);
+		bool hit = RayIntersectRect(rect, origin, direction, &intersect);
+
+		DrawRectangleRec(rect, hit ? RED : GRAY);
 		DrawLineV(origin, Vector2Add(origin, Vector2Scale(direction, 500)), BLUE);
 		DrawCircleV(origin, 10, YELLOW);
+
+		if (hit)
+		{
+			DrawCircleV(intersect, 5, GREEN);
+		}
 
 		EndDrawing();
 	}
