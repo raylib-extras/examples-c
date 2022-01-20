@@ -21,19 +21,20 @@
 
 
 // Transforms a Vector2 by a given Matrix
-Vector2 Vector2Transform(Vector2 v, Matrix mat)
-{
-	Vector2 result = { 0 };
-
-	float x = v.x;
-	float y = v.y;
-	float z = 0;
-
-	result.x = mat.m0 * x + mat.m4 * y + mat.m8 * z + mat.m12;
-	result.y = mat.m1 * x + mat.m5 * y + mat.m9 * z + mat.m13;
-
-	return result;
-}
+// Use this for older raylib
+// Vector2 Vector2Transform(Vector2 v, Matrix mat)
+// {
+// 	Vector2 result = { 0 };
+// 
+// 	float x = v.x;
+// 	float y = v.y;
+// 	float z = 0;
+// 
+// 	result.x = mat.m0 * x + mat.m4 * y + mat.m8 * z + mat.m12;
+// 	result.y = mat.m1 * x + mat.m5 * y + mat.m9 * z + mat.m13;
+// 
+// 	return result;
+// }
 
 typedef struct
 {

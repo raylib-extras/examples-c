@@ -132,6 +132,38 @@ project "CircleInView2d"
 	filter "system:linux"
 		links {"pthread", "GL", "m", "dl", "rt", "X11"}
 		
+project "ray2d_rect_intersection"
+	kind "ConsoleApp"
+	location "ray2d_rect_intersection"
+	language "C"
+	targetdir "bin/%{cfg.buildcfg}"
+	
+	vpaths 
+	{
+		["Header Files"] = { "**.h"},
+		["Source Files"] = {"**.c", "**.cpp"},
+	}
+	files {"ray2d_rect_intersection/**.c", "ray2d_rect_intersection/**.h"}
+
+	links {"raylib"}
+	
+	includedirs { "ray2d_rect_intersection", "raylib/src" }
+	platform_defines()
+		
+	filter "action:vs*"
+		defines{"_WINSOCK_DEPRECATED_NO_WARNINGS", "_CRT_SECURE_NO_WARNINGS"}
+		dependson {"raylib"}
+		links {"raylib.lib"}
+        characterset ("MBCS")
+		
+	filter "system:windows"
+		defines{"_WIN32"}
+		links {"winmm", "kernel32", "opengl32", "kernel32", "gdi32"}
+		libdirs {"bin/%{cfg.buildcfg}"}
+		
+	filter "system:linux"
+		links {"pthread", "GL", "m", "dl", "rt", "X11"}
+		
 project "UnsortedBilboards"
 	kind "ConsoleApp"
 	location "unsorted_bilboards"
