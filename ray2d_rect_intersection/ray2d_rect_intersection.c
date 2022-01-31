@@ -63,6 +63,51 @@ bool RayIntersectRect(Rectangle rect, Vector2 origin, Vector2 direction, Vector2
 	return true;
 }
 
+typedef struct
+{
+	Vector2 Origin;
+	Vector2 Direction;
+}Ray2d;
+
+bool CheckCollisionRay2dCircle(Ray2d ray, Vector2 center, float radius, Vector2* intersection)
+{
+	if (CheckCollisionPointCircle(ray.Origin, center, radius))
+	{
+		if (intersection)
+			*intersection = ray.Origin;
+
+		return true;
+	}
+
+	Vector2 vecToCenter = Vector2Subtract(center, ray.Origin);
+	float dot = Vector2DotProduct(vecToCenter, ray.Direction);
+
+	if (dot < 0)
+		return false;
+
+	Vector2 nearest = Vector2Add(ray.Origin, Vector2Scale(ray.Direction, dot));
+
+	Vector2 nearestToCenter = Vector2Subtract(center, nearest);
+	float distSq = Vector2LengthSqr(nearestToCenter);
+
+	if (distSq <= radius * radius)
+	{
+		if (intersection)
+		{
+			float nearestDist = Vector2Length(Vector2Subtract(center, nearest));
+
+			float b = sqrtf(radius * radius - nearestDist * nearestDist);
+
+			*intersection = (Vector2){ ray.Origin.x + ray.Direction.x * (dot - b), ray.Origin.y + ray.Direction.y * (dot - b) };
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+
 int main(void)
 {
 	const int screenWidth = 800;
@@ -74,8 +119,11 @@ int main(void)
 
 	Rectangle rect = { 100,100,200,50 };
 
-	Vector2 origin = { 450,300 };
+	Vector2 origin = { 450, 300 };
 	Vector2 direction = { 0, -1 };
+
+	Vector2 center = { 600, 200 };
+	float radius = 50;
 
 	// Main game loop
 	while (!WindowShouldClose())    // Detect window close button or ESC key
@@ -85,7 +133,6 @@ int main(void)
 			angleDelta += GetFrameTime() * 90;
 		if (IsKeyDown(KEY_RIGHT))
 			angleDelta += GetFrameTime() * -90;
-
 
 		Vector2 intersect;
 		Matrix rotMat = MatrixRotateZ(angleDelta * DEG2RAD);
@@ -97,13 +144,27 @@ int main(void)
 		bool hit = RayIntersectRect(rect, origin, direction, &intersect);
 
 		DrawRectangleRec(rect, hit ? RED : GRAY);
-		DrawLineV(origin, Vector2Add(origin, Vector2Scale(direction, 500)), BLUE);
 		DrawCircleV(origin, 10, YELLOW);
 
 		if (hit)
 		{
 			DrawCircleV(intersect, 5, GREEN);
 		}
+
+		hit = false;
+
+		if (CheckCollisionRay2dCircle((Ray2d) { origin, direction }, center, radius, &intersect))
+		{
+			DrawCircleV(center, radius, RED);
+			DrawCircleV(center, 2, WHITE);
+			DrawCircleV(intersect, 5, GREEN);
+		}
+		else
+		{
+			DrawCircleV(center, radius, GRAY);
+		}
+
+		DrawLineV(origin, Vector2Add(origin, Vector2Scale(direction, 500)), BLUE);
 
 		EndDrawing();
 	}
