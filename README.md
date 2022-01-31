@@ -20,3 +20,8 @@ An example of using shaders to discard pixels with 0 alpha to allow billboards t
 # Ray2d And Rect Intersection
 Code to show how to quickly detect if a 2d ray intersects a rectangle
 ![intersect](https://user-images.githubusercontent.com/322174/150265976-3b27ab1f-2087-4273-9e8e-a2e393339d96.gif)
+
+# Rect Circle Collisions
+Example of how to get the intersection point between a rectangle and a cirlce and use that to do collision detection.
+This is one way to do collisions on a player in 2/2.5d against world objects.
+![collision_rects](https://user-images.githubusercontent.com/322174/151831283-c88c5823-46cb-4c46-b3ad-d096ec3ad111.gif)

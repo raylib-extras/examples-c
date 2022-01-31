@@ -31,14 +31,26 @@
 #include "raylib.h"
 #include "raymath.h"
 
-Rectangle Rects[3] = { {450,100,100,100}, {550,100,100,100} , {550,200,100,100 } };
+#define RectCount 4
+Rectangle Rects[RectCount] = { {450,100,100,100}, {550,100,100,100} , {550,200,100,100 }, {50,300,50,50} };
 
-void PointNearestRectanglePoint(Rectangle rect, Vector2 point, Vector2* nearest)
+/// <summary>
+/// Returns the point on a rectangle that is nearest to a provided point
+/// </summary>
+/// <param name="rect">The rectangle to test against</param>
+/// <param name="point">The point you want to start from</param>
+/// <param name="nearest">A pointer that will be filed out with the point on the rectangle that is nearest to your passed in point</param>
+/// <param name="normal">A pointer that will be filed out with the the normal of the edge the nearest point is on</param>
+void PointNearestRectanglePoint(Rectangle rect, Vector2 point, Vector2* nearest, Vector2* normal)
 {
     // get the closest point on the vertical sides
     float hValue = rect.x;
-    if (point.x > rect.x + rect.width)
-        hValue = rect.x + rect.width;
+    float hNormal = -1;
+	if (point.x > rect.x + rect.width)
+	{
+		hValue = rect.x + rect.width;
+        hNormal = 1;
+	}
 
     Vector2 vecToPoint = Vector2Subtract((Vector2) { hValue, rect.y }, point);
 	// get the dot product between the ray and the vector to the point
@@ -54,8 +66,12 @@ void PointNearestRectanglePoint(Rectangle rect, Vector2 point, Vector2* nearest)
 
     // get the closest point on the horizontal sides
 	float vValue = rect.y;
-	if (point.y > rect.y + rect.height)
-		vValue = rect.y + rect.height;
+    float vNormal = -1;
+    if (point.y > rect.y + rect.height)
+    {
+        vValue = rect.y + rect.height;
+        vNormal = 1;
+    }
 
 	vecToPoint = Vector2Subtract((Vector2) { rect.x, vValue }, point);
 	// get the dot product between the ray and the vector to the point
@@ -69,8 +85,24 @@ void PointNearestRectanglePoint(Rectangle rect, Vector2 point, Vector2* nearest)
 	else
         nearest->x = rect.x + dotForPoint;
 
-    if (Vector2LengthSqr(Vector2Subtract(point,nearestPoint)) < Vector2LengthSqr(Vector2Subtract(point, *nearest)))
+    if (Vector2LengthSqr(Vector2Subtract(point, nearestPoint)) < Vector2LengthSqr(Vector2Subtract(point, *nearest)))
+    {
         *nearest = nearestPoint;
+
+        if (normal)
+        {
+            normal->x = hNormal;
+            normal->y = 0;
+        }
+    }
+    else
+    {
+		if (normal)
+		{
+			normal->y = vNormal;
+			normal->x = 0;
+		}
+    }
 }
 
 int main(void)
@@ -116,10 +148,11 @@ int main(void)
         bool collided = false;
 
         int collisionCount = 0;
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < RectCount; i++)
         {
             Vector2 hitPoint = { -100,-100 };
-            PointNearestRectanglePoint(Rects[i], newPosOrigin, &hitPoint);
+            Vector2 hitNormal = { 0, 0 };
+            PointNearestRectanglePoint(Rects[i], newPosOrigin, &hitPoint, &hitNormal);
 
             Vector2 vectorToHit = Vector2Subtract(hitPoint, newPosOrigin);
 
@@ -130,14 +163,22 @@ int main(void)
                 collided = true;
                 intersectPoint[collisionCount++] = hitPoint;
 
-                // compute how far past the hit the radius is
-                float distToHit = Vector2Length(vectorToHit);
-                float backOff = Radius - distToHit;
-                vectorToHit.x /= distToHit;
-                vectorToHit.y /= distToHit;
+                // normalize the vector along the point to where we are nearest
+                vectorToHit = Vector2Normalize(vectorToHit);
 
-                // back off along the vector to the hit by however far we went into the rectangle by
-                newPosOrigin = Vector2Add(newPosOrigin, Vector2Scale(vectorToHit, -backOff));
+                // project that out to the radius to find the point that should be 'deepest' into the rectangle.
+                Vector2 projectedPoint = Vector2Add(newPosOrigin, Vector2Scale(vectorToHit, Radius));
+
+                // compute the shift to take the deepest point out to the edge of our nearest hit, based on the vector direction
+                Vector2 delta = { 0,0 };
+
+                if (hitNormal.x != 0)
+                    delta.x = hitPoint.x - projectedPoint.x;
+                else
+                    delta.y = hitPoint.y - projectedPoint.y;
+
+                // shift the new point by the delta to push us outside of the rectangle
+                newPosOrigin = Vector2Add(newPosOrigin, delta);
             }
         }
 
@@ -146,7 +187,7 @@ int main(void)
         BeginDrawing();
             ClearBackground(BLACK);
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < RectCount; i++)
                 DrawRectangleRec(Rects[i], RED);
 
             DrawCircleV(PlayerOrigin, collided ? 10 : 2, collided ? YELLOW : DARKGREEN);
