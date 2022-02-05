@@ -13,6 +13,40 @@ function platform_defines()
 	end
 end
 
+function define_project(project_folder)
+	kind "ConsoleApp"
+	location(project_folder)
+	language "C"
+	targetdir "bin/%{cfg.buildcfg}"
+	
+	vpaths 
+	{
+		["Header Files"] = { "**.h"},
+		["Source Files"] = {"**.c"},
+	}
+	files {project_folder.."/**.c", project_folder.."/**.h"}
+
+	links {"raylib"}
+	
+	includedirs { project_folder, "raylib/src" }
+	platform_defines()
+	
+	filter "action:vs*"
+		defines{"_WINSOCK_DEPRECATED_NO_WARNINGS", "_CRT_SECURE_NO_WARNINGS"}
+		dependson {"raylib"}
+		links {"raylib.lib"}
+        characterset ("MBCS")
+		
+	filter "system:windows"
+		defines{"_WIN32"}
+		links {"winmm", "kernel32", "opengl32", "kernel32", "gdi32"}
+		libdirs {"bin/%{cfg.buildcfg}"}
+		
+	filter "system:linux"
+		links {"pthread", "GL", "m", "dl", "rt", "X11"}
+
+end
+
 workspace "Examples-c"
 	configurations { "Debug","Debug.DLL", "Release", "Release.DLL" }
 	platforms { "x64", "x86"}
@@ -69,163 +103,16 @@ project "raylib"
 	files {"raylib/src/*.h", "raylib/src/*.c"}
 		
 project "TextureRepeat"
-	kind "ConsoleApp"
-	location "texture_repeat"
-	language "C"
-	targetdir "bin/%{cfg.buildcfg}"
-	
-	vpaths 
-	{
-		["Header Files"] = { "**.h"},
-		["Source Files"] = {"**.c", "**.cpp"},
-	}
-	files {"texture_repeat/**.c", "texture_repeat/**.h"}
+	define_project("texture_repeat")
 
-	links {"raylib"}
-	
-	includedirs { "texture_repeat", "raylib/src" }
-	platform_defines()
-	
-	filter "action:vs*"
-		defines{"_WINSOCK_DEPRECATED_NO_WARNINGS", "_CRT_SECURE_NO_WARNINGS"}
-		dependson {"raylib"}
-		links {"raylib.lib"}
-        characterset ("MBCS")
-		
-	filter "system:windows"
-		defines{"_WIN32"}
-		links {"winmm", "kernel32", "opengl32", "kernel32", "gdi32"}
-		libdirs {"bin/%{cfg.buildcfg}"}
-		
-	filter "system:linux"
-		links {"pthread", "GL", "m", "dl", "rt", "X11"}
-		
 project "CircleInView2d"
-	kind "ConsoleApp"
-	location "circle_in_view_2d"
-	language "C"
-	targetdir "bin/%{cfg.buildcfg}"
+	define_project("circle_in_view_2d")
 	
-	vpaths 
-	{
-		["Header Files"] = { "**.h"},
-		["Source Files"] = {"**.c", "**.cpp"},
-	}
-	files {"circle_in_view_2d/**.c", "circle_in_view_2d/**.h"}
-
-	links {"raylib"}
-	
-	includedirs { "circle_in_view_2d", "raylib/src" }
-	platform_defines()
-		
-	filter "action:vs*"
-		defines{"_WINSOCK_DEPRECATED_NO_WARNINGS", "_CRT_SECURE_NO_WARNINGS"}
-		dependson {"raylib"}
-		links {"raylib.lib"}
-        characterset ("MBCS")
-		
-	filter "system:windows"
-		defines{"_WIN32"}
-		links {"winmm", "kernel32", "opengl32", "kernel32", "gdi32"}
-		libdirs {"bin/%{cfg.buildcfg}"}
-		
-	filter "system:linux"
-		links {"pthread", "GL", "m", "dl", "rt", "X11"}
-		
-project "ray2d_rect_intersection"
-	kind "ConsoleApp"
-	location "ray2d_rect_intersection"
-	language "C"
-	targetdir "bin/%{cfg.buildcfg}"
-	
-	vpaths 
-	{
-		["Header Files"] = { "**.h"},
-		["Source Files"] = {"**.c", "**.cpp"},
-	}
-	files {"ray2d_rect_intersection/**.c", "ray2d_rect_intersection/**.h"}
-
-	links {"raylib"}
-	
-	includedirs { "ray2d_rect_intersection", "raylib/src" }
-	platform_defines()
-		
-	filter "action:vs*"
-		defines{"_WINSOCK_DEPRECATED_NO_WARNINGS", "_CRT_SECURE_NO_WARNINGS"}
-		dependson {"raylib"}
-		links {"raylib.lib"}
-        characterset ("MBCS")
-		
-	filter "system:windows"
-		defines{"_WIN32"}
-		links {"winmm", "kernel32", "opengl32", "kernel32", "gdi32"}
-		libdirs {"bin/%{cfg.buildcfg}"}
-		
-	filter "system:linux"
-		links {"pthread", "GL", "m", "dl", "rt", "X11"}
+project "Ray2dRectIntersection"
+	define_project("ray2d_rect_intersection")
 		
 project "UnsortedBilboards"
-	kind "ConsoleApp"
-	location "unsorted_bilboards"
-	language "C++"
-	targetdir "bin/%{cfg.buildcfg}"
-	cppdialect "C++17"
-	
-	vpaths 
-	{
-		["Header Files"] = { "**.h"},
-		["Source Files"] = {"**.c", "**.cpp"},
-	}
-	files {"unsorted_bilboards/**.c", "unsorted_bilboards/**.cpp", "unsorted_bilboards/**.h"}
-
-	links {"raylib"}
-	
-	includedirs { "unsorted_bilboards", "raylib/src" }
-	platform_defines()
-	
-	filter "action:vs*"
-		defines{"_WINSOCK_DEPRECATED_NO_WARNINGS", "_CRT_SECURE_NO_WARNINGS"}
-		dependson {"raylib"}
-		links {"raylib.lib"}
-        characterset ("MBCS")
-		
-	filter "system:windows"
-		defines{"_WIN32"}
-		links {"winmm", "kernel32", "opengl32", "kernel32", "gdi32"}
-		libdirs {"bin/%{cfg.buildcfg}"}
-		
-	filter "system:linux"
-		links {"pthread", "GL", "m", "dl", "rt", "X11"}
+	define_project("unsorted_bilboards")
 		
 project "RectCircleCollisions"
-	kind "ConsoleApp"
-	location "rect_circle_collisions"
-	language "C++"
-	targetdir "bin/%{cfg.buildcfg}"
-	cppdialect "C++17"
-	
-	vpaths 
-	{
-		["Header Files"] = { "**.h"},
-		["Source Files"] = {"**.c", "**.cpp"},
-	}
-	files {"rect_circle_collisions/**.c", "rect_circle_collisions/**.cpp", "rect_circle_collisions/**.h"}
-
-	links {"raylib"}
-	
-	includedirs { "rect_circle_collisions", "raylib/src" }
-	platform_defines()
-	
-	filter "action:vs*"
-		defines{"_WINSOCK_DEPRECATED_NO_WARNINGS", "_CRT_SECURE_NO_WARNINGS"}
-		dependson {"raylib"}
-		links {"raylib.lib"}
-        characterset ("MBCS")
-		
-	filter "system:windows"
-		defines{"_WIN32"}
-		links {"winmm", "kernel32", "opengl32", "kernel32", "gdi32"}
-		libdirs {"bin/%{cfg.buildcfg}"}
-		
-	filter "system:linux"
-		links {"pthread", "GL", "m", "dl", "rt", "X11"}
+	define_project("rect_circle_collisions")
