@@ -25,3 +25,7 @@ Code to show how to quickly detect if a 2d ray intersects a rectangle
 Example of how to get the intersection point between a rectangle and a cirlce and use that to do collision detection.
 This is one way to do collisions on a player in 2/2.5d against world objects.
 ![collision_rects](https://user-images.githubusercontent.com/322174/151831283-c88c5823-46cb-4c46-b3ad-d096ec3ad111.gif)
+
+# Camera Clamp
+A simple example of how to keep a camera view on a map but still follow the player when possible.
+![camera_clamp](https://user-images.githubusercontent.com/322174/152666088-6812df46-fe05-45f0-adb1-60282a68140e.gif)

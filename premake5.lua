@@ -116,3 +116,6 @@ project "UnsortedBilboards"
 		
 project "RectCircleCollisions"
 	define_project("rect_circle_collisions")
+	
+project "CameraClamp"
+	define_project("camera_clamp")
