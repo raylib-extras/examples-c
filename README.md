@@ -29,3 +29,7 @@ This is one way to do collisions on a player in 2/2.5d against world objects.
 # Camera Clamp
 A simple example of how to keep a camera view on a map but still follow the player when possible.
 ![camera_clamp](https://user-images.githubusercontent.com/322174/152666088-6812df46-fe05-45f0-adb1-60282a68140e.gif)
+
+# Camera World Rect
+A simple example of how to get the screen rectangle in world space, with pan and zoom taken into account
+![screen_in_world_rect](https://user-images.githubusercontent.com/322174/152667574-f3761c91-6e81-4592-ad35-6ce1a0dd94c6.gif)

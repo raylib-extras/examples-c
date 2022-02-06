@@ -119,3 +119,6 @@ project "RectCircleCollisions"
 	
 project "CameraClamp"
 	define_project("camera_clamp")
+	
+project "CameraWorldRect"
+	define_project("camera_world_rect")
