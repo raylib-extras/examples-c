@@ -30,6 +30,7 @@
 
 #include "raylib.h"
 #include "raymath.h"
+#include <stddef.h>
 
 int main(void)
 {

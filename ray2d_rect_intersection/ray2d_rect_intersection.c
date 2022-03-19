@@ -31,8 +31,8 @@ bool RayIntersectRect(Rectangle rect, Vector2 origin, Vector2 direction, Vector2
 		float txMin = (rect.x - origin.x) / direction.x;
 		float txMax = ((rect.x + rect.width) - origin.x) / direction.x;
 
-		minParam = max(minParam, min(txMin, txMax));
-		maxParam = min(maxParam, max(txMin, txMax));
+		minParam = fmax(minParam, fmin(txMin, txMax));
+		maxParam = fmin(maxParam, fmax(txMin, txMax));
 	}
 
 	if (direction.y != 0.0)
@@ -40,8 +40,8 @@ bool RayIntersectRect(Rectangle rect, Vector2 origin, Vector2 direction, Vector2
 		float tyMin = (rect.y - origin.y) / direction.y;
 		float tyMax = ((rect.y + rect.height) - origin.y) / direction.y;
 
-		minParam = max(minParam, min(tyMin, tyMax));
-		maxParam = min(maxParam, max(tyMin, tyMax));
+		minParam = fmax(minParam, fmin(tyMin, tyMax));
+		maxParam = fmin(maxParam, fmax(tyMin, tyMax));
 	}
 
 	// if maxParam < 0, ray is intersecting AABB, but the whole AABB is behind us
