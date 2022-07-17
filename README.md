@@ -37,3 +37,6 @@ A simple example of how to keep a camera view on a map but still follow the play
 # Camera World Rect
 A simple example of how to get the screen rectangle in world space, with pan and zoom taken into account
 ![screen_in_world_rect](https://user-images.githubusercontent.com/322174/152667574-f3761c91-6e81-4592-ad35-6ce1a0dd94c6.gif)
+
+# Mouse Zoom
+An example of how to zoom a Camera2d around the mouse cursor.
