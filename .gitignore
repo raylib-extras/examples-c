@@ -351,3 +351,5 @@ MigrationBackup/
 *.vcxproj
 *.make
 *.filters
+/camera_clamp/*.sln
+/raylib-master

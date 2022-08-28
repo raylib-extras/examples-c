@@ -3,7 +3,19 @@
 Examples and samples made for raylib using C
 
 ## Building
-The examples use premake, assumes a raylib folder is created manualy or using the submodule. Get premake5 for your system and run it for your build target. Batch file for visual studio is included.
+The examples use premake. Each example is a project on it's own. Premake will setup the build systems for each project for you, and download any needed libraries (raylib and box2d)
+
+### For Visual Studio
+Run premake-VisualStudio.bat. When it is done each example folder will have a .sln file in it that you can open and run.
+
+### For MinGW
+Run premake-mingw.bat. When it is done each example folder will have a makefile that you can build, just cd into the example folder and type make.
+
+### For GCC On Linux
+Run "premake5 gmake2". When it is done each example folder will have a makefile that you can build, just cd into the example folder and type make.
+
+### For GCC On MacOs
+Run "premake5.osx gmake2". When it is done each example folder will have a makefile that you can build, just cd into the example folder and type make.
 
 # Circle In View 2D
 Code showing how to check if a circle is inside a view cone. Shows examples of using dot products to find what side of a vector a point is on, and how to compute the nearest point on a vector to another point.
