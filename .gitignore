@@ -353,3 +353,4 @@ MigrationBackup/
 *.filters
 /camera_clamp/*.sln
 /raylib-master
+*.sln

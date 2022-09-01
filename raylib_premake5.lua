@@ -37,9 +37,9 @@ function link_raylib()
     links {"raylib"}
 
     raylib_dir = get_raylib_dir();
-    includedirs {"../" .. raylib_dir .. "/src" }
-	includedirs {"../" .. raylib_dir .."/src/external" }
-	includedirs {"../" .. raylib_dir .."/src/external/glfw/include" }
+    includedirs {raylib_dir .. "/src" }
+	includedirs {raylib_dir .."/src/external" }
+	includedirs {raylib_dir .."/src/external/glfw/include" }
     platform_defines()
 
     libdirs {"_bin/%{cfg.buildcfg}"}
@@ -66,9 +66,9 @@ end
 
 function include_raylib()
     raylib_dir = get_raylib_dir();
-    includedirs {"../" .. raylib_dir .."/src" }
-	includedirs {"../" .. raylib_dir .."/src/external" }
-	includedirs {"../" .. raylib_dir .."/src/external/glfw/include" }
+    includedirs {raylib_dir .."/src" }
+	includedirs {raylib_dir .."/src/external" }
+	includedirs {raylib_dir .."/src/external/glfw/include" }
     platform_defines()
 
     filter "action:vs*"
