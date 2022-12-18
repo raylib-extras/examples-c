@@ -53,3 +53,7 @@ A simple example of how to get the screen rectangle in world space, with pan and
 # Mouse Zoom
 An example of how to zoom a Camera2d around the mouse cursor.
 ![mouse_zoom](https://user-images.githubusercontent.com/322174/179423394-6012957e-d892-42d8-b927-b6db10921ad7.gif)
+
+# Platform Motion
+Example of simple platfomer motion and collision
+![platform](https://user-images.githubusercontent.com/322174/208321841-9f4bdb9b-1bab-4e90-9559-40bb3fd5b67f.gif)
