@@ -38,7 +38,7 @@ void Draw3DBillboardRec(Camera camera, Texture2D texture, Rectangle source, Vect
     rlPushMatrix();
 
     // get the camera view matrix
-    Matrix mat = MatrixLookAt(camera.position, camera.target, camera.up);
+    Matrix mat =MatrixInvert(MatrixLookAt(camera.position, camera.target, camera.up));
     // peel off just the rotation
     Quaternion quat = QuaternionFromMatrix(mat);
     mat = QuaternionToMatrix(quat);
