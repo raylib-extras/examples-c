@@ -160,7 +160,7 @@ float GetDeltaTime()
 #define MAX_WALLS 7
 
 // main entry point
-void main(void)
+int main(void)
 {
 	SetConfigFlags(FLAG_VSYNC_HINT);
 	InitWindow(1280, 600, "Support Example");
@@ -271,5 +271,5 @@ void main(void)
 	}
 
 	CloseWindow();
-	
+	return 0;
 }
