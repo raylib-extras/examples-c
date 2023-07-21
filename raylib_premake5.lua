@@ -94,7 +94,6 @@ function defineRaylibProject()
         filter{}
 
         raylib_dir = get_raylib_dir();
-        print ("Using raylib dir " .. raylib_dir);
         includedirs {raylib_dir .. "/src", raylib_dir .. "/src/external/glfw/include" }
         vpaths
         {

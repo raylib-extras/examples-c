@@ -61,3 +61,7 @@ Example of simple platfomer motion and collision
 # rlgl_example
 Example of using raw rlgl to draw geometry
 
+# lua_embed
+Example of embeding lua into a game and exposting functions and data to lua scripts, using raylib
+
+
