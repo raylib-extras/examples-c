@@ -61,20 +61,20 @@ Bullet Bullets[MAX_BULLETS] = { 0 };
 // functions bound to lua
 // these are a series of functions that let the lua behavior script get info and change the game state.
 
-int LuaGetEnimyCount(lua_State* luaState)
+int LuaGetEnemyCount(lua_State* luaState)
 {
     lua_pushinteger(luaState, MAX_ENIMIES);
     return 1;
 }
 
-int LuaGetEnimyPosX(lua_State* luaState)
+int LuaGetEnemyPosX(lua_State* luaState)
 {
     int index = (int)luaL_checkinteger(luaState, 1);
     lua_pushnumber(luaState, Enemies[index].Position.x);
     return 1;
 }
 
-int LuaGetEnimyPosY(lua_State* luaState)
+int LuaGetEnemyPosY(lua_State* luaState)
 {
     int index = (int)luaL_checkinteger(luaState, 1);
     lua_pushnumber(luaState, Enemies[index].Position.y);
@@ -89,7 +89,7 @@ int LuaMovePlayer(lua_State* luaState)
     return 0;
 }
 
-int LuaGetEnimyAngle(lua_State* luaState)
+int LuaGetEnemyAngle(lua_State* luaState)
 {
     int index = (int)luaL_checkinteger(luaState, 1);
     lua_pushnumber(luaState, Enemies[index].Angle);
@@ -106,7 +106,7 @@ int LuaDistanceToPlayer(lua_State* luaState)
     return 1;
 }
 
-int LuaTurnTwardPlayer(lua_State* luaState)
+int LuaTurnTowardPlayer(lua_State* luaState)
 {
     int index = (int)luaL_checkinteger(luaState, 1);
     float speed = (float)luaL_checknumber(luaState, 2);
@@ -120,7 +120,7 @@ int LuaTurnTwardPlayer(lua_State* luaState)
     return 1;
 }
 
-int LuaEnimyCanFire(lua_State* luaState)
+int LuaEnemyCanFire(lua_State* luaState)
 {
     int index = (int)luaL_checkinteger(luaState, 1);
 
@@ -128,7 +128,7 @@ int LuaEnimyCanFire(lua_State* luaState)
     return 1;
 }
 
-int LuaEnimyFire(lua_State* luaState)
+int LuaEnemyFire(lua_State* luaState)
 {
     int index = (int)luaL_checkinteger(luaState, 1);
     float speed = (float)luaL_checknumber(luaState, 2);
@@ -168,15 +168,15 @@ int LuaEnimyFire(lua_State* luaState)
 // loads bound functions into lua state
 void PushLuaAPI(lua_State* luaState)
 {
-    lua_register(luaState, "GetEnimyCount", LuaGetEnimyCount);
-    lua_register(luaState, "EnimyFire", LuaEnimyFire);
-    lua_register(luaState, "EnimyCanFire", LuaEnimyCanFire);
-    lua_register(luaState, "GetEnimyPosX", LuaGetEnimyPosX);
-    lua_register(luaState, "GetEnimyPosY", LuaGetEnimyPosY);
-    lua_register(luaState, "GetEnimyAngle", LuaGetEnimyAngle);
+    lua_register(luaState, "GetEnemyCount", LuaGetEnemyCount);
+    lua_register(luaState, "EnemyFire", LuaEnemyFire);
+    lua_register(luaState, "EnemyCanFire", LuaEnemyCanFire);
+    lua_register(luaState, "GetEnemyPosX", LuaGetEnemyPosX);
+    lua_register(luaState, "GetEnemyPosY", LuaGetEnemyPosY);
+    lua_register(luaState, "GetEnemyAngle", LuaGetEnemyAngle);
     lua_register(luaState, "MovePlayer", LuaMovePlayer);
     lua_register(luaState, "DistanceToPlayer", LuaDistanceToPlayer);
-    lua_register(luaState, "TurnTwardPlayer", LuaTurnTwardPlayer);
+    lua_register(luaState, "TurnTowardPlayer", LuaTurnTowardPlayer);
 }
 
 // runs the file as a lua script
@@ -195,13 +195,13 @@ void RunLuaScript(lua_State* luaState, const char* scriptFile)
 }
 
 Texture PlayerTexture;
-Texture EnimyTexture;
+Texture EnemyTexture;
 Texture BulletTexture;
 
 void LoadResources()
 {
     PlayerTexture = LoadTexture("resources/textures/player.png");
-    EnimyTexture = LoadTexture("resources/textures/enimy.png");
+    EnemyTexture = LoadTexture("resources/textures/enemy.png");
     BulletTexture = LoadTexture("resources/textures/bullet.png");
 }
 
@@ -218,14 +218,14 @@ void SetupGame()
     }
 }
 
-void DoEnimyBehaviors(lua_State* luaState)
+void DoEnemyBehaviors(lua_State* luaState)
 {
     for (int i = 0; i < MAX_ENIMIES; i++)
     {
         lua_pushinteger(luaState, (lua_Integer)i);
-        lua_setglobal(luaState, "CurrentEnimy");
+        lua_setglobal(luaState, "CurrentEnemy");
 
-        RunLuaScript(luaState, "resources/scripts/enimy_behavior.lua");
+        RunLuaScript(luaState, "resources/scripts/enemy_behavior.lua");
     }
 }
 
@@ -266,7 +266,7 @@ void UpdateGameState()
 
     for (int i = 0; i < MAX_ENIMIES; i++)
     {
-        DrawEntity(Enemies[i].Position, Enemies[i].Angle, EnimyTexture, RED);
+        DrawEntity(Enemies[i].Position, Enemies[i].Angle, EnemyTexture, RED);
 
         if (Enemies[i].ReloadTime > 0)
             Enemies[i].ReloadTime -= GetFrameTime();
@@ -310,7 +310,7 @@ int main()
 
         UpdateGameState();
 
-        DoEnimyBehaviors(scriptState);
+        DoEnemyBehaviors(scriptState);
         EndDrawing();
     }
 
