@@ -183,7 +183,7 @@ void PushLuaAPI(lua_State* luaState)
 void RunLuaScript(lua_State* luaState, const char* scriptFile)
 {
     if (!scriptFile)
-        scriptFile;
+        return;
 
     if (luaL_dofile(luaState, scriptFile) == LUA_OK)
     {
@@ -283,6 +283,11 @@ void UpdateGameState()
     }
 }
 
+void DoFixedTimeStep(float dt)
+{
+
+}
+
 int main()
 {
     // set up the window
@@ -301,9 +306,19 @@ int main()
     // push our exposed API functions into lua
     PushLuaAPI(scriptState);
 
+    float accumulator = 0;
+    float fixedTimeStep = 1.0f / 60.0f;
+
     // game loop
     while (!WindowShouldClose())
     {
+        accumulator += GetFrameTime();
+        while (accumulator < fixedTimeStep)
+        {
+            DoFixedTimeStep(fixedTimeStep);
+            accumulator -= fixedTimeStep;
+        }
+
         // drawing
         BeginDrawing();
         ClearBackground(BLACK);
