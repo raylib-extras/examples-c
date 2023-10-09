@@ -64,4 +64,6 @@ Example of using raw rlgl to draw geometry
 # lua_embed
 Example of embeding lua into a game and exposting functions and data to lua scripts, using raylib
 
+# camera worldspace
+Example of how to use a camera to create a nominal worldspace with any window size
 
