@@ -6,7 +6,7 @@ This is an example main file for a simple raylib project.
 
 #include "raylib.h"
 #include "rlgl.h"
-#include "raymath.h";
+#include "raymath.h"
 
 int main ()
 {
