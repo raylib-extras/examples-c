@@ -13,7 +13,7 @@ int main ()
 	float NominalScreenWidth = 640;
 
 	// set up the window
-	InitWindow(1280, 800, "Camera Worldspave");
+	InitWindow(1280, 800, "Camera Worldspace");
 	SetTargetFPS(144);
 
 	// create a camera that computes a nominal worldspace;
