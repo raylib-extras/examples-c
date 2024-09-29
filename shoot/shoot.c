@@ -49,8 +49,8 @@ const float MoveSpeed = 200;
 typedef struct Treadmark
 {
     float Lifetime;
-	Vector2 Position;
-	float Angle;
+    Vector2 Position;
+    float Angle;
 }Treadmark;
 Treadmark Treadmarks[MaxTreadMarks] = { 0 };
 
@@ -63,8 +63,8 @@ float LastTreadMarkTime = 0;
 // bullet data
 typedef struct Bullet
 {
-	float Lifetime;
-	Vector2 Position;
+    float Lifetime;
+    Vector2 Position;
     Vector2 Direction;
 }Bullet;
 Bullet Bullets[MaxBullets] = { 0 };
@@ -72,175 +72,175 @@ Bullet Bullets[MaxBullets] = { 0 };
 // initialization
 void GameInit()
 {
-	// start the player in the center
-	PlayerPos =(Vector2){ GetScreenWidth() * 0.5f, GetScreenHeight() * 0.5f};
+    // start the player in the center
+    PlayerPos =(Vector2){ GetScreenWidth() * 0.5f, GetScreenHeight() * 0.5f};
 }
 
 // game logic update
 bool GameUpdate()
 {
-	// rotate player
-	if (IsKeyDown(KEY_A))
-		PlayerAngle -= GetFrameTime() * RotationSpeed;
+    // rotate player
+    if (IsKeyDown(KEY_A))
+        PlayerAngle -= GetFrameTime() * RotationSpeed;
     if (IsKeyDown(KEY_D))
         PlayerAngle += GetFrameTime() * RotationSpeed;
 
-	// turn the player angle into a normal vector so we can use it to modify positions below
-	Vector2 facing = { cosf(PlayerAngle * DEG2RAD), sinf(PlayerAngle * DEG2RAD) };
+    // turn the player angle into a normal vector so we can use it to modify positions below
+    Vector2 facing = { cosf(PlayerAngle * DEG2RAD), sinf(PlayerAngle * DEG2RAD) };
 
-	// move the player forward and backwards
-	if (IsKeyDown(KEY_W))
-		PlayerPos = Vector2Add(PlayerPos, Vector2Scale(facing, MoveSpeed * GetFrameTime()));
+    // move the player forward and backwards
+    if (IsKeyDown(KEY_W))
+        PlayerPos = Vector2Add(PlayerPos, Vector2Scale(facing, MoveSpeed * GetFrameTime()));
     if (IsKeyDown(KEY_S))
-		PlayerPos = Vector2Add(PlayerPos, Vector2Scale(facing, MoveSpeed * GetFrameTime() * -0.5f)); // backwards is half speed
+        PlayerPos = Vector2Add(PlayerPos, Vector2Scale(facing, MoveSpeed * GetFrameTime() * -0.5f)); // backwards is half speed
 
-	// Optional TODO
-	// ensure the player stays on screen or do collisions with any obstacles
+    // Optional TODO
+    // ensure the player stays on screen or do collisions with any obstacles
 
-	// update treadmarks so they fade out over time
-	for (int i = 0; i < MaxTreadMarks; i++)
-	{
-		if (Treadmarks[i].Lifetime > 0)
-			Treadmarks[i].Lifetime -= GetFrameTime();
-	}
+    // update treadmarks so they fade out over time
+    for (int i = 0; i < MaxTreadMarks; i++)
+    {
+        if (Treadmarks[i].Lifetime > 0)
+            Treadmarks[i].Lifetime -= GetFrameTime();
+    }
 
-	// add a new teadmark
-	LastTreadMarkTime -= GetFrameTime();
-	while (LastTreadMarkTime <= 0)
-	{
-		LastTreadMarkTime += TreadmarkGenerationTime;
-		for (int i = 0; i < MaxTreadMarks; i++)
-		{
-			if (Treadmarks[i].Lifetime <= 0)
-			{
-				Treadmarks[i].Lifetime = 1;
-				Treadmarks[i].Position = PlayerPos;
-				Treadmarks[i].Angle = PlayerAngle;
+    // add a new teadmark
+    LastTreadMarkTime -= GetFrameTime();
+    while (LastTreadMarkTime <= 0)
+    {
+        LastTreadMarkTime += TreadmarkGenerationTime;
+        for (int i = 0; i < MaxTreadMarks; i++)
+        {
+            if (Treadmarks[i].Lifetime <= 0)
+            {
+                Treadmarks[i].Lifetime = 1;
+                Treadmarks[i].Position = PlayerPos;
+                Treadmarks[i].Angle = PlayerAngle;
 
-				break;
-			}
-		}
-	}
+                break;
+            }
+        }
+    }
 
-	// update the shot time
-	if (LastShotTime > 0)
-		LastShotTime -= GetFrameTime();
+    // update the shot time
+    if (LastShotTime > 0)
+        LastShotTime -= GetFrameTime();
 
-	// update bullet positions, and let old bullets die
-	for (int i = 0; i < MaxBullets; i++)
-	{
-		if (Bullets[i].Lifetime > 0)
-		{
-			Bullets[i].Lifetime -= GetFrameTime();
-			Bullets[i].Position = Vector2Add(Bullets[i].Position, Vector2Scale(Bullets[i].Direction, GetFrameTime()));
+    // update bullet positions, and let old bullets die
+    for (int i = 0; i < MaxBullets; i++)
+    {
+        if (Bullets[i].Lifetime > 0)
+        {
+            Bullets[i].Lifetime -= GetFrameTime();
+            Bullets[i].Position = Vector2Add(Bullets[i].Position, Vector2Scale(Bullets[i].Direction, GetFrameTime()));
 
-			// Optional TODO,
-			// check if the bullet is off the screen and kill it
-		}
-	}
+            // Optional TODO,
+            // check if the bullet is off the screen and kill it
+        }
+    }
 
-	// shoot
-	if (IsKeyDown(KEY_SPACE) && LastShotTime <= 0)
-	{
-		for (int i = 0; i < MaxBullets; i++)
-		{
-			// find the first empty bullet slot
-			if (Bullets[i].Lifetime <= 0)
-			{
-				// add a new bullet a little distance away from the player
-				Bullets[i].Position = Vector2Add(PlayerPos, Vector2Scale(facing, 30));
-				Bullets[i].Direction = Vector2Scale(facing, BulletSpeed); // scale the bullet direction by the speed
-					
-				Bullets[i].Lifetime = MaxBulletLife;
-				LastShotTime = ShotReloadTime;
+    // shoot
+    if (IsKeyDown(KEY_SPACE) && LastShotTime <= 0)
+    {
+        for (int i = 0; i < MaxBullets; i++)
+        {
+            // find the first empty bullet slot
+            if (Bullets[i].Lifetime <= 0)
+            {
+                // add a new bullet a little distance away from the player
+                Bullets[i].Position = Vector2Add(PlayerPos, Vector2Scale(facing, 30));
+                Bullets[i].Direction = Vector2Scale(facing, BulletSpeed); // scale the bullet direction by the speed
+                    
+                Bullets[i].Lifetime = MaxBulletLife;
+                LastShotTime = ShotReloadTime;
 
-				// Optional TODO
-				// play a sound
-				break;
-			}
-		}
-	}
+                // Optional TODO
+                // play a sound
+                break;
+            }
+        }
+    }
 
-	return true;
+    return true;
 }
 
 // rendering
 void GameDraw()
 {
-	BeginDrawing();
-	ClearBackground(DARKGRAY);
+    BeginDrawing();
+    ClearBackground(DARKGRAY);
 
-	// track how many active bullets and marks there are
-	int marks = 0;
-	int bullets = 0;
+    // track how many active bullets and marks there are
+    int marks = 0;
+    int bullets = 0;
 
-	// draw each treadmark, fading it out over time
-	for (int i = 0; i < MaxTreadMarks; i++)
+    // draw each treadmark, fading it out over time
+    for (int i = 0; i < MaxTreadMarks; i++)
     {
-		if (Treadmarks[i].Lifetime > 0)
-		{
-			// set the transform matrix to where the treadmark is
-			rlPushMatrix();
+        if (Treadmarks[i].Lifetime > 0)
+        {
+            // set the transform matrix to where the treadmark is
+            rlPushMatrix();
             rlTranslatef(Treadmarks[i].Position.x, Treadmarks[i].Position.y, 0);
             rlRotatef(Treadmarks[i].Angle, 0, 0, 1);
 
-			Color color = ColorAlpha(GRAY, Treadmarks[i].Lifetime * 0.75f);
+            Color color = ColorAlpha(GRAY, Treadmarks[i].Lifetime * 0.75f);
 
             DrawRectangleRec((Rectangle){ -15,10, 30,5 }, color);
             DrawRectangleRec((Rectangle){ -15,-15, 30,5 }, color);
-			rlPopMatrix();
-			marks++;
-		}
+            rlPopMatrix();
+            marks++;
+        }
     }
 
-	// draw the player
-	// set the transform matrix to where the player is and it's angle
-	rlPushMatrix();
-	rlTranslatef(PlayerPos.x, PlayerPos.y, 0);
-	rlRotatef(PlayerAngle, 0, 0, 1);
+    // draw the player
+    // set the transform matrix to where the player is and it's angle
+    rlPushMatrix();
+    rlTranslatef(PlayerPos.x, PlayerPos.y, 0);
+    rlRotatef(PlayerAngle, 0, 0, 1);
 
-	// draw a little tank out of rectangles
+    // draw a little tank out of rectangles
     DrawRectangleRec((Rectangle) { -10, -10, 20, 20 }, GREEN);
-	DrawRectangleRec((Rectangle) { 0,-3, 30,6 }, DARKGREEN);
-	DrawRectangleRec((Rectangle) { -15,10, 30,5 }, BLACK);
-	DrawRectangleRec((Rectangle) { -15,-15, 30,5 }, BLACK);
+    DrawRectangleRec((Rectangle) { 0,-3, 30,6 }, DARKGREEN);
+    DrawRectangleRec((Rectangle) { -15,10, 30,5 }, BLACK);
+    DrawRectangleRec((Rectangle) { -15,-15, 30,5 }, BLACK);
 
-	// reset the transform matrix
-	rlPopMatrix();
+    // reset the transform matrix
+    rlPopMatrix();
 
-	// draw each bullet
-	for (int i = 0; i < MaxBullets; i++)
-	{
-		if (Bullets[i].Lifetime > 0)
-		{
-			DrawCircleV(Bullets[i].Position, 5, RED);
-			bullets++;
-		}
-	}
+    // draw each bullet
+    for (int i = 0; i < MaxBullets; i++)
+    {
+        if (Bullets[i].Lifetime > 0)
+        {
+            DrawCircleV(Bullets[i].Position, 5, RED);
+            bullets++;
+        }
+    }
 
-	// instructions and stats
-	DrawFPS(0, 0);
-	DrawText("A/D = rotation W/S = movement Space = shoot", 2, GetScreenHeight() - 20, 20, BLACK);
-	DrawText(TextFormat("%d Bullets, %d Marks", bullets, marks), GetScreenWidth() - 200, GetScreenHeight() - 20, 20, RED);
-	EndDrawing();
+    // instructions and stats
+    DrawFPS(0, 0);
+    DrawText("A/D = rotation W/S = movement Space = shoot", 2, GetScreenHeight() - 20, 20, BLACK);
+    DrawText(TextFormat("%d Bullets, %d Marks", bullets, marks), GetScreenWidth() - 200, GetScreenHeight() - 20, 20, RED);
+    EndDrawing();
 }
 
 int main()
 {
-	SetConfigFlags(FLAG_VSYNC_HINT);
-	InitWindow(1280, 800, "Shoot");
-	SetTargetFPS(300);
+    SetConfigFlags(FLAG_VSYNC_HINT);
+    InitWindow(1280, 800, "Shoot");
+    SetTargetFPS(300);
 
-	GameInit();
+    GameInit();
 
-	while (!WindowShouldClose())
-	{
-		if (!GameUpdate())
-			break;
-		
-		GameDraw();
-	}
+    while (!WindowShouldClose())
+    {
+        if (!GameUpdate())
+            break;
+        
+        GameDraw();
+    }
 
-	CloseWindow();
-	return 0;
+    CloseWindow();
+    return 0;
 }
