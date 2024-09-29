@@ -1,6 +1,6 @@
 /**********************************************************************************************
 *
-*   raylib-extras, examples-cpp * examples for Raylib in C++
+*   raylib-extras, examples-c * examples for Raylib in C
 *
 *   Shoot * an example of movement and shots
 *
