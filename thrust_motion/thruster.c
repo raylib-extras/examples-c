@@ -89,12 +89,12 @@ int main()
 		BeginDrawing();
 		ClearBackground(DARKGRAY);
 
-		DrawRectangleLinesEx((Rectangle){ 1,1,GetScreenWidth()-1,GetScreenHeight()-1 }, 3, RED);
+		DrawRectangleLinesEx((Rectangle){ 1,1, (float)GetScreenWidth()-1, (float)GetScreenHeight()-1 }, 3, RED);
 
 		// draw the ship centered
 		DrawTexturePro(ship,
-			(Rectangle) { 0, 0, ship.width, ship.height },
-			(Rectangle) { shipPosition.x, shipPosition.y, ship.width, ship.height },
+			(Rectangle) { 0, 0, (float)ship.width, (float)ship.height },
+			(Rectangle) { shipPosition.x, shipPosition.y, (float)ship.width, (float)ship.height },
 			(Vector2) { ship.width * 0.5f, ship.height * 0.5f },
 			shipAngle+90 /*compensate for our rotated ship graphic*/,
 			WHITE);

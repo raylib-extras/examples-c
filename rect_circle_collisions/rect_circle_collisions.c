@@ -190,8 +190,8 @@ int main(void)
             for (int i = 0; i < RectCount; i++)
                 DrawRectangleRec(Rects[i], RED);
 
-            DrawCircleV(PlayerOrigin, collided ? 10 : 2, collided ? YELLOW : DARKGREEN);
-            DrawCircleLines(PlayerOrigin.x, PlayerOrigin.y, Radius, DARKGREEN);
+            DrawCircleV(PlayerOrigin, collided ? 10.0f : 2.0f, collided ? YELLOW : DARKGREEN);
+            DrawCircleLinesV(PlayerOrigin, Radius, DARKGREEN);
             DrawLineV(PlayerOrigin, Vector2Add(PlayerOrigin, Vector2Scale(PlayerDirection, Radius)), GREEN);
             for (int i = 0; i < 2; i++)
                 DrawCircleV(intersectPoint[i], 5, PURPLE);

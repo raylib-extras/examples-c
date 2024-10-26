@@ -40,7 +40,7 @@ void DrawQuad3d(Texture2D texture, float width, float height, Color tint)
 	rlSetTexture(texture.id);
 
     // draw the entire texture
-    Rectangle source = { 0,0,texture.width,texture.height };
+    Rectangle source = { 0,0, (float)texture.width, (float)texture.height };
 
 	// draw quad
 	rlBegin(RL_QUADS);

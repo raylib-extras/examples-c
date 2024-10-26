@@ -81,7 +81,7 @@ void RotateView(View* view, float angle)
 
 void DrawView(View* view)
 {
-	DrawCircle(view->Position.x, view->Position.y, 5, LIGHTGRAY);
+	DrawCircleV(view->Position, 5, LIGHTGRAY);
 
 	//left view
 	Vector2 viewExtension = Vector2Add(view->Position, Vector2Scale(view->Left.Direction, 500));
@@ -203,7 +203,7 @@ int main(void)
 
 		DrawView(&view);
 
-		DrawCircle(point.x, point.y, 5, BLUE);
+		DrawCircleV(point, 5, BLUE);
 
 		Color c = RED;
 
@@ -214,7 +214,7 @@ int main(void)
 		else if (t == Contained)
 			c = GREEN;
 
-		DrawCircleLines(point.x, point.y, radius, c);
+		DrawCircleLinesV(point, radius, c);
 
 		EndDrawing();
 	}

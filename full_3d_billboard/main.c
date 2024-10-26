@@ -54,8 +54,6 @@ void Draw3DBillboardRec(Camera camera, Texture2D texture, Rectangle source, Vect
     float width = size.x / 2;
     float height = size.y / 2;
 
-    Color color = WHITE;
-
     rlCheckRenderBatchLimit(6);
 
     rlSetTexture(texture.id);
@@ -115,7 +113,7 @@ int main(void)
         cam.position = Vector3Transform(cam.position, mat);
 
         // move the camera up and down so that it has a X axis rotation too
-        cam.position.y = sinf(GetTime()) * 5;
+        cam.position.y = sinf((float)GetTime()) * 5;
 
         BeginDrawing();
         ClearBackground(WHITE);

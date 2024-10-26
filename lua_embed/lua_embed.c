@@ -113,7 +113,7 @@ int LuaTurnTowardPlayer(lua_State* luaState)
 
     Vector2 vectorToPlayer = Vector2Normalize(Vector2Subtract(Player.Position, Enemies[index].Position));
 
-    float angle = atan2(vectorToPlayer.y, vectorToPlayer.x) * RAD2DEG;
+    float angle = atan2f(vectorToPlayer.y, vectorToPlayer.x) * RAD2DEG;
     Enemies[index].Angle = angle;
 
     lua_pushboolean(luaState, true);
@@ -313,7 +313,7 @@ int main()
     while (!WindowShouldClose())
     {
         accumulator += GetFrameTime();
-        while (accumulator < fixedTimeStep)
+        while (accumulator > fixedTimeStep)
         {
             DoFixedTimeStep(fixedTimeStep);
             accumulator -= fixedTimeStep;

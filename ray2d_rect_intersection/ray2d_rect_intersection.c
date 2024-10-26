@@ -31,8 +31,8 @@ bool RayIntersectRect(Rectangle rect, Vector2 origin, Vector2 direction, Vector2
 		float txMin = (rect.x - origin.x) / direction.x;
 		float txMax = ((rect.x + rect.width) - origin.x) / direction.x;
 
-		minParam = fmax(minParam, fmin(txMin, txMax));
-		maxParam = fmin(maxParam, fmax(txMin, txMax));
+		minParam = fmaxf(minParam, fminf(txMin, txMax));
+		maxParam = fminf(maxParam, fmaxf(txMin, txMax));
 	}
 
 	if (direction.y != 0.0)
@@ -40,8 +40,8 @@ bool RayIntersectRect(Rectangle rect, Vector2 origin, Vector2 direction, Vector2
 		float tyMin = (rect.y - origin.y) / direction.y;
 		float tyMax = ((rect.y + rect.height) - origin.y) / direction.y;
 
-		minParam = fmax(minParam, fmin(tyMin, tyMax));
-		maxParam = fmin(maxParam, fmax(tyMin, tyMax));
+		minParam = fmaxf(minParam, fminf(tyMin, tyMax));
+		maxParam = fminf(maxParam, fmaxf(tyMin, tyMax));
 	}
 
 	// if maxParam < 0, ray is intersecting AABB, but the whole AABB is behind us
@@ -130,11 +130,11 @@ int main(void)
 	{
 		float angleDelta = 0;
 		if (IsKeyDown(KEY_LEFT))
-			angleDelta += GetFrameTime() * 90;
-		if (IsKeyDown(KEY_RIGHT))
 			angleDelta += GetFrameTime() * -90;
+		if (IsKeyDown(KEY_RIGHT))
+			angleDelta += GetFrameTime() * 90;
 
-		Vector2 intersect;
+		Vector2 intersect = (Vector2){ 0, 0 };
 		Matrix rotMat = MatrixRotateZ(angleDelta * DEG2RAD);
 		direction = Vector2Transform(direction, rotMat);
 

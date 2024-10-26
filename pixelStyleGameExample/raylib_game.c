@@ -1,6 +1,8 @@
 
 #include "raylib.h"
 
+#include <math.h>
+
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
 #endif
@@ -91,16 +93,16 @@ void UpdateDrawFrame(void)
     if (IsKeyDown(KEY_A))
         PlayerPos.x -= speed;
 
-    ViewCamera.zoom = (int)(GetScreenWidth() / (float)VirtualScreenWidth);
+    ViewCamera.zoom = floorf(GetScreenWidth() / (float)VirtualScreenWidth);
 
-    ViewCamera.offset.y = GetScreenHeight();
+    ViewCamera.offset.y = (float)GetScreenHeight();
     ViewCamera.offset.x = 36 * ViewCamera.zoom;
     ViewCamera.target.y = 18;
 
     ViewCamera.target.x = PlayerPos.x;
 
-    float screenOriginInCamera = (int)(GetScreenToWorld2D((Vector2) { 0, 0 }, ViewCamera).x);
-    float screenEdgeInCamera = (int)(GetScreenToWorld2D((Vector2) {GetScreenWidth(), GetScreenHeight() }, ViewCamera).x + 0.5f);
+    float screenOriginInCamera = floorf(GetScreenToWorld2D((Vector2) { 0, 0 }, ViewCamera).x);
+    float screenEdgeInCamera = floorf(GetScreenToWorld2D((Vector2) { (float)GetScreenWidth(), (float)GetScreenHeight() }, ViewCamera).x + 0.5f);
 
     int tileStartX = (int)(screenOriginInCamera / 18) -1;
     int tileEndX = (int)(screenEdgeInCamera / 18) + 1;
