@@ -51,6 +51,52 @@ typedef struct
 	Vector2 Position;
 }View;
 
+typedef enum
+{
+    Outside = 0,
+    Contained = 1,
+    Intersecting = 2,
+}ViewInteresectionType;
+
+// see if a circle is on the normal side of a ray, intersecting it, or outside it
+ViewInteresectionType SphereNearViewRay(Vector2 origin, ViewRay* ray, Vector2 center, float radius)
+{
+    // get the vector from the origin to the point to test
+    Vector2 vecToPoint = Vector2Subtract(center, origin);
+
+    // get the dot product between the ray and the vector to the point
+    float dotForPoint = Vector2DotProduct(ray->Direction, vecToPoint);
+
+    // the nearest point on the ray is the dot product projection along the ray vector
+    Vector2 nearestPoint = { origin.x + ray->Direction.x * dotForPoint, origin.y + ray->Direction.y * dotForPoint };
+
+	DrawCircleV(nearestPoint, 5, BLUE);
+
+    // dot product between the normal and the vector to the point tells us what side of the ray the point is on as well as it's distance
+    float normDot = Vector2DotProduct(ray->Normal, vecToPoint);
+
+	DrawText(TextFormat("%2.2f", normDot), nearestPoint.x - 20, nearestPoint.y + 10, 10, WHITE);
+
+    // the dot product for the point is the distance along the ray to our nearest point
+    // if it is less than the negative radius, the point is behind the ray origin and can't be intersecting or inside
+    if (normDot < radius)
+    {
+        // if the distance from the nearest point to the center is less than a radius, it must be intersecting
+        if (fabsf(normDot) <= radius)
+        {
+            return Intersecting;
+        }
+        else
+        {
+            // if the point is on the inside of the ray, it is fully contained (because we know it's not intersecting)
+            if (normDot <= 0)
+                return Contained;
+        }
+    }
+
+    return Outside;
+}
+
 // setup a view 
 void InitView(View* view, Vector2 position, float startingAngle, float fov)
 {
@@ -98,50 +144,7 @@ void DrawView(View* view)
 	DrawLineV(normalPoint, normalExtension, VIOLET);
 }
 
-typedef enum 
-{
-	Outside = 0,
-	Contained = 1,
-	Intersecting = 2,
-}ViewInteresectionType;
 
-// see if a circle is on the normal side of a ray, intersecting it, or outside it
-ViewInteresectionType SphereNearViewRay(Vector2 origin, ViewRay* ray, Vector2 center, float radius)
-{
-	// get the vector from the origin to the point to test
-	Vector2 vecToPoint = Vector2Subtract(center, origin);
-
-	// get the dot product between the ray and the vector to the point
-	float dotForPoint = Vector2DotProduct(ray->Direction, vecToPoint);
-
-	// the nearest point on the ray is the dot product projection along the ray vector
-	Vector2 nearestPoint = { origin.x + ray->Direction.x * dotForPoint, origin.y + ray->Direction.y * dotForPoint };
-
-	// distance from the center to the nearest point, squared
-	float nearestDistSq = Vector2LengthSqr(Vector2Subtract(center, nearestPoint));
-
-	// dot product between the normal and the vector to the point tells us what side of the ray the point is on
-	float normDot = Vector2DotProduct(ray->Normal, vecToPoint);
-
-	// the dot product for the point is the distance along the ray to our nearest point
-	// if it is less than the negative radius, the point is behind the ray origin and can't be intersecting or inside
-	if (dotForPoint > -radius)
-	{
-		// if the distance from the nearest point to the center is less than a radius, it must be intersecting
-		if (nearestDistSq <= radius * radius)
-		{
-			return Intersecting;
-		}
-		else
-		{
-			// if the point is on the inside of the ray, it is fully contained (because we know it's not intersecting)
-			if (normDot >= 0)
-				return Contained;
-		}
-	}
-
-	return Outside;
-}
 
 // test the circle against both sides of the view
 ViewInteresectionType CircleInView(View* view, Vector2 center, float radius)
