@@ -1,67 +1,120 @@
 /*
-Raylib example file.
-This example shows drawing to an image and updating a texture for display
-
+Drawing function with erase
 */
 
 #include "raylib.h"
+#include "raymath.h"
+#include "rlgl.h"
+#include "external/glad.h"
 
-int main ()
+RenderTexture Canvas = { 0 };
+
+int main()
 {
-	// set up the window
-	InitWindow(320, 200, "Write To Image");
-	SetTargetFPS(800);
+    // set up the window
+    InitWindow(1000, 800, "Draw and Erase");
+    SetTargetFPS(800);
 
-	// create an image the same size as the window for us to draw too
-	Image imageBuffer = GenImageColor(GetScreenWidth(), GetScreenHeight(), BLACK);
+    Canvas = LoadRenderTexture(GetScreenWidth(), GetScreenHeight());
 
-	// make a texture that matches the format and size of the image
-	Texture displayTexture = LoadTextureFromImage(imageBuffer);
+    BeginTextureMode(Canvas);
+    ClearBackground(BLANK);
+    EndTextureMode();
 
-	// some state data for us to use while drawing
-	bool useRed = true;
+    bool draw = true;
+    Color DrawColor = BLUE;
 
-	int x = 0;
-	int y = 0;
+    float brushSize = 10;
 
-	// game loop
-	while (!WindowShouldClose())
-	{
-		// draw a pixel to the image
-		ImageDrawPixel(&imageBuffer, x, y, useRed ? RED : BLUE);
-		// Note, you can also directly access imageBuffer.data if you want to do raw pixel buffer manipulation
-		
-		// update to the next pixel.
-		x++;
-		if (x >= GetScreenWidth())
-		{
-			// we went off the end of the screen, move to the next line
-			y++;
-			x = 0;
-		}
+    // game loop
+    while (!WindowShouldClose())
+    {
+        Vector2 mousePos = GetMousePosition();
 
-		if (y >= GetScreenHeight())
-		{
-			// we filled the screen start over with a different color
-			y = 0;
-			useRed = !useRed;
-		}
+        if (IsKeyPressed(KEY_E))
+            draw = false;
+        if (IsKeyPressed(KEY_R))
+            draw = true;
 
-		// update the texture with our new pixel data (this uploads the new pixel data to the GPU)
-		UpdateTexture(displayTexture, imageBuffer.data);
-		
-		BeginDrawing();
-		ClearBackground(WHITE);
+        if (IsKeyPressed(KEY_ONE))
+            DrawColor = BLUE;
+        if (IsKeyPressed(KEY_TWO))
+            DrawColor = RED;
+        if (IsKeyPressed(KEY_THREE))
+            DrawColor = YELLOW;
 
-		// display the texture from the GPU to the screen
-		DrawTexture(displayTexture, 0, 0, WHITE);
+        if (IsKeyPressed(KEY_UP))
+            brushSize += 1;
 
-		EndDrawing();
-	}
+        if (IsKeyPressed(KEY_DOWN))
+            brushSize -= 1;
 
-	UnloadImage(imageBuffer);
-	UnloadTexture(displayTexture);
-	// cleanup
-	CloseWindow();
-	return 0;
+        if (brushSize < 2)
+            brushSize = 2;
+
+        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+        {
+            BeginTextureMode(Canvas);
+
+            Color drawColor = DrawColor;
+
+            if (!draw)
+            {
+                rlSetBlendFactors(GL_SRC_ALPHA, GL_SRC_ALPHA, GL_MIN);
+                rlSetBlendMode(BLEND_CUSTOM);
+                drawColor = BLANK;
+            }
+
+            Vector2 lastPos = Vector2Subtract(mousePos, GetMouseDelta());
+
+            Vector2 strokeVector = Vector2Normalize(GetMouseDelta());
+            float strokeDistance = Vector2Length(GetMouseDelta()) / 20;
+
+            for (float i = 0; i <= 20; i += 1)
+            {
+                Vector2 pos = Vector2Add(lastPos, Vector2Scale(strokeVector, strokeDistance * i));
+                DrawCircleV(pos, brushSize, drawColor);
+            }
+
+            // go back to normal
+            rlSetBlendMode(BLEND_ALPHA);
+
+            EndTextureMode();
+        }
+
+        BeginDrawing();
+        ClearBackground(BLACK);
+        DrawTextureRec(Canvas.texture, (Rectangle) { 0, 0, (float)Canvas.texture.width, -(float)Canvas.texture.height }, (Vector2) { 0, 0 }, WHITE);
+
+        if (draw)
+        {
+            DrawCircleV(mousePos, brushSize, DrawColor);
+            DrawCircleLinesV(mousePos, brushSize, WHITE);
+        }
+        else
+        {
+            DrawCircleLinesV(mousePos, brushSize, RED);
+        }
+
+        DrawRectangle(0, 0, 20, 20, BLUE);
+        DrawText("1", 0, 0, 20, WHITE);
+        DrawRectangle(30, 0, 20, 20, RED);
+        DrawText("2", 30, 0, 20, WHITE);
+        DrawRectangle(60, 0, 20, 20, YELLOW);
+        DrawText("3", 60, 0, 20, BLACK);
+
+        if (draw)
+            DrawText("Drawing [erase(E)]", 10, 20, 20, WHITE);
+        else
+            DrawText("Erasing [draw(P)]", 10, 20, 20, WHITE);
+
+        DrawText("Up/Down change brush size", 10, 40, 20, WHITE);
+
+        EndDrawing();
+    }
+
+    UnloadRenderTexture(Canvas);
+    // cleanup
+    CloseWindow();
+    return 0;
 }
