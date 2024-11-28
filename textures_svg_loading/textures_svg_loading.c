@@ -112,11 +112,12 @@ static Image LoadImageSVG(const char *fileName, int width, int height)
             (fileData[3] == 'g'))
         {
             struct NSVGimage *svgImage = nsvgParse(fileData, "px", 96.0f);
-            unsigned char *imgData = RL_MALLOC(svgImage->width*svgImage->height*4);
 
             // NOTE: If required width or height is 0, using default SVG internal value
             if (width == 0) width = svgImage->width;
             if (height == 0) height = svgImage->height;
+            
+            unsigned char *imgData = RL_MALLOC(width*height*4);
 
             // Calculate scales for both the width and the height
             float scaleWidth = width/svgImage->width;
