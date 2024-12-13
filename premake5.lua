@@ -85,8 +85,8 @@ function defineWorkspace(baseName)
 
         filter "action:vs*"
             debugdir "$(SolutionDir)"
-		
-	    filter {"action:vs*", "configurations:Release"}
+
+        filter {"action:vs*", "configurations:Release"}
             kind "WindowedApp"
             entrypoint "mainCRTStartup"
             
@@ -100,6 +100,8 @@ function defineWorkspace(baseName)
         files {"**.c", "**.cpp", "**.h", "**.hpp"}
 
         includedirs { "./"}
+        includedirs { "./include"}
+        includedirs { "./src"}
         link_raylib();
 end
 
