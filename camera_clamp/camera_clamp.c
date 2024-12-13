@@ -52,7 +52,7 @@ int main(void)
 	Camera2D cam = { 0 };
 	cam.zoom = 1;
 	// center the camera on the middle of the screen
-	cam.offset = (Vector2){ screenWidth / 2, screenHeight / 2 };
+	cam.offset = (Vector2){ (float)screenWidth / 2, (float)screenHeight / 2 };
 
 	// make a player
 	Vector2 pos = { 100,100 };
@@ -80,13 +80,13 @@ int main(void)
 			pos.x = 25;
 
 		if (pos.x > background.width-25)
-			pos.x = background.width - 25;
+			pos.x = (float)background.width - 25;
 
 		if (pos.y < 25)
 			pos.y = 25;
 
 		if (pos.y > background.height - 25)
-			pos.y = background.height - 25;
+			pos.y = (float)background.height - 25;
 
 		// set the camera target to follow the player
 		cam.target = pos;

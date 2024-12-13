@@ -13,7 +13,7 @@ int main ()
 	float NominalScreenWidth = 640;
 
 	// set up the window
-	InitWindow(1280, 800, "Camera Worldspave");
+	InitWindow(1280, 800, "Camera Worldspace");
 	SetTargetFPS(144);
 
 	// create a camera that computes a nominal worldspace;
@@ -28,13 +28,13 @@ int main ()
 
 		BeginMode2D(cam);
 
-		DrawLine(0, 100, NominalScreenWidth, 100, RED);
-		DrawText(TextFormat("%0.0f units", NominalScreenWidth), NominalScreenWidth / 2, 100, 20, MAROON);
+		DrawLine(0, 100, (int)NominalScreenWidth, 100, RED);
+		DrawText(TextFormat("%0.0f units", (int)NominalScreenWidth), (int)NominalScreenWidth / 2, 100, 20, MAROON);
 
 		DrawCircle(200, 200, 50, PURPLE);
 
 		Vector2 worldspaceCursor = GetScreenToWorld2D(GetMousePosition(), cam);
-		DrawText(TextFormat("World Space X%0.0f Y%0.0f", worldspaceCursor.x, worldspaceCursor.y), worldspaceCursor.x, worldspaceCursor.y - 10, 10, YELLOW);
+		DrawText(TextFormat("World Space X%0.0f Y%0.0f", worldspaceCursor.x, worldspaceCursor.y), (int)worldspaceCursor.x, (int)worldspaceCursor.y - 10, 10, YELLOW);
 
 		EndMode2D();
 
@@ -42,7 +42,7 @@ int main ()
 		DrawText(TextFormat("%d pixels", GetScreenWidth()), GetScreenWidth() / 2, GetScreenHeight() - 100, 20, GREEN);
 
 		Vector2 screenspaceCursor = GetMousePosition();
-		DrawText(TextFormat("Screen Space X%0.0f Y%0.0f", screenspaceCursor.x, screenspaceCursor.y), screenspaceCursor.x, screenspaceCursor.y + 20, 20, ORANGE);
+		DrawText(TextFormat("Screen Space X%0.0f Y%0.0f", screenspaceCursor.x, screenspaceCursor.y), (int)screenspaceCursor.x, (int)screenspaceCursor.y + 20, 20, ORANGE);
 
 		EndDrawing();
 	}

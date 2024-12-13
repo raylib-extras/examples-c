@@ -53,7 +53,7 @@ int main(void)
 	Camera2D cam = { 0 };
 	cam.zoom = 1;
 	// center the camera on the middle of the screen
-	cam.offset = (Vector2){ screenWidth / 2, screenHeight / 2 };
+	cam.offset = (Vector2){ (float)screenWidth / 2, (float)screenHeight / 2 };
 
 
 	// Main game loop
@@ -73,7 +73,7 @@ int main(void)
 			cam.zoom = 0.125f;
 
 		Vector2 screenInWorldStart = GetScreenToWorld2D((Vector2) { 0, 0 }, cam);
-		Vector2 screenInWorldEnd = GetScreenToWorld2D((Vector2) { GetScreenWidth(), GetScreenHeight() }, cam);
+		Vector2 screenInWorldEnd = GetScreenToWorld2D((Vector2) { (float)GetScreenWidth(), (float)GetScreenHeight() }, cam);
 		Rectangle screenInWorldRect = (Rectangle){ screenInWorldStart.x, screenInWorldStart.y, screenInWorldEnd.x - screenInWorldStart.x, screenInWorldEnd.y - screenInWorldStart.y };
 
 		// draw the world
