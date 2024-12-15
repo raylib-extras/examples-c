@@ -27,6 +27,8 @@ For a C++ project simply rename the file to .cpp and re-run the build script
 #include <stdlib.h>
 
 #include "raylib.h"
+#include "raymath.h"
+#include "rlgl.h"
 
 #include "resource_dir.h"	// utility header for SearchAndSetResourceDir
 
@@ -34,6 +36,7 @@ For a C++ project simply rename the file to .cpp and re-run the build script
 #include "transform.h"
 #include "sprite.h"
 #include "shape.h"
+#include "behavior.h"
 
 typedef struct Scene
 {
@@ -45,9 +48,16 @@ Scene TheScene = { 0 };
 
 Texture wabbit = { 0 };
 
+void DrawShape(GameObject* object, Transform2D* transform);
+void DrawSprite(GameObject* object, Transform2D* transform);
+void DrawRenderable(GameObject* object);
+
+void UpdateTransform(GameObject* object);
+void UpdateRotation(GameObject* object);
+
 void InitScene()
 {
-	TheScene.ObjectCount = 50;
+	TheScene.ObjectCount = 10;
 	TheScene.Objects = malloc(sizeof(GameObject) * TheScene.ObjectCount);
 
 	for (int i = 0; i < TheScene.ObjectCount; i++)
@@ -60,10 +70,22 @@ void InitScene()
 		transform->Position.x = (float)GetRandomValue(10, 1200);
 		transform->Position.y = (float)GetRandomValue(10, 700);
 
-		if (GetRandomValue(0,100) < 50)
-			GameObjectAddComponent(TheScene.Objects + index, SpriteComponent, CreateSprite(wabbit));
-		else
-			GameObjectAddComponent(TheScene.Objects + index, ShapeComponent, CreateShape((float)GetRandomValue(10, 30)));
+		GameObjectAddComponent(TheScene.Objects + index, BehaviorComponent, CreateBahavior(UpdateTransform));
+
+		float radius = (float)GetRandomValue(10, 30);
+		GameObjectAddComponent(TheScene.Objects + index, ShapeComponent, CreateShape(radius));
+
+        // add a child with sprite
+		
+		GameObject* child = AddChildObject(TheScene.Objects + index);
+        GameObjectAddComponent(child, TransformComponent, CreateTransform());
+        transform = GetTransformComponent(child);
+		transform->Position.x = radius * 3;
+		transform->Position.y = 0;
+		transform->Rotation = (float)GetRandomValue(-180, 180);
+		GameObjectAddComponent(child, SpriteComponent, CreateSprite(wabbit));
+
+		GameObjectAddComponent(child, BehaviorComponent, CreateBahavior(UpdateRotation));
 	}
 }
 
@@ -79,52 +101,102 @@ void DestoryScene()
 
 void DrawShape(GameObject* object, Transform2D* transform)
 {
+	rlPushMatrix();
+	rlTranslatef(transform->Position.x, transform->Position.y, 0);
+	rlRotatef(transform->Rotation, 0, 0, 1);
+
 	Shape* shape = GetShapeComponent(object);
-	DrawCircleV(transform->Position, shape->Radius, BLUE);
+	DrawCircleV(Vector2Zero(), shape->Radius, BLUE);
+	
+	for (int child = 0; child < object->ChildCount; child++)
+		DrawRenderable(object->Children + child);
+	rlPopMatrix();
 }
 
 void DrawSprite(GameObject* object, Transform2D* transform)
 {
+    rlPushMatrix();
+    rlTranslatef(transform->Position.x, transform->Position.y, 0);
+    rlRotatef(transform->Rotation, 0, 0, 1);
+
 	Sprite* sprite = GetSpriteComponent(object);
-	DrawTextureV(sprite->Texture, transform->Position, WHITE);
+	DrawTextureV(sprite->Texture, (Vector2){sprite->Texture.width * 0.5f, sprite->Texture.height * 0.5f }, WHITE);
+
+    for (int child = 0; child < object->ChildCount; child++)
+        DrawRenderable(object->Children + child);
+    rlPopMatrix();
+}
+
+void DrawRenderable(GameObject* object)
+{
+    Transform2D* transform = GetTransformComponent(object);
+    if (transform == NULL)
+        return;
+
+    // shapes
+    if (GameObjectHasComponent(object, ShapeComponent))
+        DrawShape(object, transform);
+
+    // sprites
+    if (GameObjectHasComponent(object, SpriteComponent))
+        DrawSprite(object, transform);
 }
 
 void DrawRenderables()
 {
 	for (int i = 0; i < TheScene.ObjectCount; i++)
 	{
-		Transform2D* transform = GetTransformComponent(TheScene.Objects + i);
-		if (transform == NULL)
-			continue;
-
-		// shapes
-		if (GameObjectHasComponent(TheScene.Objects + i, ShapeComponent))
-			DrawShape(TheScene.Objects + i, transform);
-
-		// sprites
-		if (GameObjectHasComponent(TheScene.Objects + i, SpriteComponent))
-			DrawSprite(TheScene.Objects + i, transform);
+		DrawRenderable(TheScene.Objects + i);
 	}
 }
 
-void UpdateTransforms()
+void UpdateTransform(GameObject* object)
 {
-	// update all transforms
+    Transform2D* transform = GetTransformComponent(object);
+
+    if (transform == NULL)
+        return;
+
+    transform->Position.x += GetFrameTime() * 20;
+    transform->Position.y += GetFrameTime() * 10;
+
+    if (transform->Position.x > 1200)
+        transform->Position.x = 0;
+    if (transform->Position.y > 700)
+        transform->Position.y = 0;
+}
+
+void UpdateRotation(GameObject* object)
+{
+    Transform2D* transform = GetTransformComponent(object);
+
+    if (transform == NULL)
+        return;
+
+	transform->Rotation += GetFrameTime() * 45;
+
+	while (transform->Rotation > 180)
+		transform->Rotation -= 360;
+}
+
+void ProcessBehavior(GameObject* object)
+{
+    Behavior* behavior = GetBahaviorComponent(object);
+
+    if (behavior == NULL)
+        return;
+
+	if (behavior != NULL)
+		behavior->UpdateFunction(object);
+
+    for (int child = 0; child < object->ChildCount; child++)
+		ProcessBehavior(object->Children + child);
+}
+
+void ProcessBehaviors()
+{
 	for (int i = 0; i < TheScene.ObjectCount; i++)
-	{
-		Transform2D* transform = GetTransformComponent(TheScene.Objects + i);
-
-		if (transform == NULL)
-			continue;
-
-		transform->Position.x += GetFrameTime() * 20;
-		transform->Position.y += GetFrameTime() * 10;
-
-		if (transform->Position.x > 1200)
-			transform->Position.x = 0;
-		if (transform->Position.y > 700)
-			transform->Position.y = 0;
-	}
+		ProcessBehavior(TheScene.Objects + i);
 }
 
 int main ()
@@ -147,7 +219,7 @@ int main ()
 	// game loop
 	while (!WindowShouldClose())		// run the loop until the user presses ESCAPE or presses the Close button on the window
 	{
-		UpdateTransforms();
+		ProcessBehaviors();
 
 		// drawing
 		BeginDrawing();

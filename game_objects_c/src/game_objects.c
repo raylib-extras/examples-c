@@ -8,8 +8,28 @@ void InitalizeGameObject(GameObject* object)
 	if (object == NULL)
 		return;
 
+	object->Name[0] = '/0';
 	object->CompoentSize = 0;
 	object->Components = NULL;
+
+    object->Parent = NULL;
+
+    object->ChildCount= 0;
+    object->Children = NULL;
+}
+
+GameObject* AddChildObject(GameObject* parent)
+{
+	if (parent == NULL)
+		return;
+
+    parent->ChildCount++;
+    parent->Children = realloc(parent->Children, sizeof(GameObject) * parent->ChildCount);
+    GameObject * object = parent->Children + (parent->ChildCount - 1);
+
+	InitalizeGameObject(object);
+
+	return object;
 }
 
 void DestoryGameObject(GameObject* object)
@@ -21,10 +41,23 @@ void DestoryGameObject(GameObject* object)
 	free(object->Components);
 	object->CompoentSize = 0;
 	object->Components = NULL;
+
+	object->Parent = NULL;
+
+	for (int i = 0; i < object->ChildCount; i++)
+	{
+		DestoryGameObject(object->Children + i);
+	}
+
+	object->ChildCount = 0;
+	object->Children = NULL;
 }
 
 void GameObjectAddComponent(GameObject* object, ComponentType type, void* componentValue)
 {
+	if (GameObjectHasComponent(object, type))
+		return;
+
 	object->CompoentSize++;
 	object->Components = realloc(object->Components, sizeof(GameObjectComponent) * object->CompoentSize);
 	object->Components[object->CompoentSize - 1].CompType = type;
