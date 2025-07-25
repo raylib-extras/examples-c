@@ -886,7 +886,7 @@ int main(void)
                 }
                 else if (selectedDepth == selectedMonad->depth)
                 {
-                    if (!mainResult.resultMonad && Vector2Distance(selectedMonad->avgCenter, GetMousePosition()) <= 30.0f /*deny if too close to container.*/)
+                    if (!mainResult.resultMonad && Vector2Distance(selectedMonad->avgCenter, GetMousePosition()) >= 30.0f /*deny if too close to container.*/)
                     {
                         strcpy(monadLog, "Added object [");
                         strcat(monadLog, AddMonad(GetMousePosition(), selectedMonad)->name);
