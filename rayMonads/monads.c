@@ -644,7 +644,12 @@ char* InterpretAddMonadsAndLinksRecursive(Monad* selectedMonad , const char* in)
         {
             case '[':
                 Vector2 oriV2 = selectedMonad->avgCenter;
-                Monad* newMonadPtr = AddMonad((Vector2){oriV2.x + subCount*(oriV2.x < GetScreenWidth()/2 ? 60.1f : -60.1f) + 60.0f , oriV2.y + subCount*(oriV2.y < GetScreenHeight()/2 ? 60.0f : -60.0f)} , selectedMonad);
+                Vector2 newV2 = (Vector2){oriV2.x + subCount*(oriV2.x < GetScreenWidth()/2 ? 60.1f : -60.1f) + 60.0f , oriV2.y + subCount*(oriV2.y < GetScreenHeight()/2 ? 60.0f : -60.0f)};
+                if(!IsVector2OnScreen(newV2))
+                {
+                    newV2 = (Vector2){GetScreenWidth() - 70.0f , GetScreenHeight() - 70.0f};
+                }
+                Monad* newMonadPtr = AddMonad(newV2 , selectedMonad);
                 if (!firstNewMonad)
                 {
                     firstNewMonad = newMonadPtr;
@@ -675,7 +680,7 @@ char* InterpretAddMonadsAndLinksRecursive(Monad* selectedMonad , const char* in)
                 step++;
             break;
             case ';':
-                if (firstNewMonad)
+                if (firstNewMonad && lastNewMonad)
                 {
                     Monad* iterator = firstNewMonad;
                     int index = 0;
