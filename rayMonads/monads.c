@@ -92,6 +92,14 @@ typedef struct ActiveResult
     int resultKey, resultDepth;
 } ActiveResult;
 
+#define SCREENMARGIN 50
+
+bool IsVector2OnScreen(Vector2 pos)
+{
+    return pos.x >= SCREENMARGIN && pos.x <= GetScreenWidth() - SCREENMARGIN &&
+           pos.y >= SCREENMARGIN && pos.y <= GetScreenHeight() - SCREENMARGIN;
+}
+
 // Adds an object (subMonad) to ContainingMonadPtr. ContainingMonadPtr must not be null.
 struct Monad* AddMonad(Vector2 canvasPosition, Monad* containingMonadPtr)
 {
@@ -479,7 +487,7 @@ char* AppendMallocDiscard(char* str1, char* str2, int discardLevel)
     return new_str;
 }
 
-#define _FORBIDDEN "[]:,>\0\r\n"
+#define _FORBIDDEN "[]:;>\0\r\n"
 
 char* GenerateIDMalloc(int index) //sub monads limited by the highest int, really high.
 {
@@ -582,7 +590,7 @@ void PrintMonadsRecursive(Monad* MonadPtr, int index, char** outRef) //outref re
                             out = AppendMallocDiscard(out , GenerateIDMalloc(subIndex) , DISCARD_BOTH);
                             out = AppendMallocDiscard(out , ">" , DISCARD_FIRST);
                             out = AppendMallocDiscard(out , GenerateIDMalloc(subIndex2) , DISCARD_BOTH);
-                            out = AppendMallocDiscard(out , "," , DISCARD_FIRST);
+                            out = AppendMallocDiscard(out , ";" , DISCARD_FIRST);
                             break;
                         }
                         matchingIterator2 = matchingIterator2->next;
@@ -618,23 +626,44 @@ char* InterpretAddMonadsAndLinksRecursive(Monad* selectedMonad , const char* in)
     payload[0] = '\0';
     payload2[0] = '\0';
     int step = ID;
+    int subCount = 0;
+    Monad* rootMonadPtr = selectedMonad->rootSubMonads;
+    Monad* firstNewMonad = NULL;
+    Monad* lastNewMonad = NULL;
+    if (rootMonadPtr)
+    {
+        Monad* iterator = rootMonadPtr;
+        do
+        {
+            subCount++;
+        } while (iterator != rootMonadPtr);
+    }
     while (*progress != '\0')
     {
         switch(*progress)
         {
             case '[':
                 Vector2 oriV2 = selectedMonad->avgCenter;
-                int len = strlen(progress);
-                progress = InterpretAddMonadsAndLinksRecursive(AddMonad((Vector2){oriV2.x + len*(oriV2.x < GetScreenWidth()/2 ? 6.1f : -6.1f) + 60.0f , oriV2.y + len*(oriV2.y < GetScreenHeight()/2 ? 6.1f : -6.1f)} , selectedMonad) , progress);
+                Monad* newMonadPtr = AddMonad((Vector2){oriV2.x + subCount*(oriV2.x < GetScreenWidth()/2 ? 60.1f : -60.1f) + 60.0f , oriV2.y + subCount*(oriV2.y < GetScreenHeight()/2 ? 60.0f : -60.0f)} , selectedMonad);
+                if (!firstNewMonad)
+                {
+                    firstNewMonad = newMonadPtr;
+                }
+                progress = InterpretAddMonadsAndLinksRecursive(newMonadPtr , progress);
+                subCount++;
             break;
             case ']':
                 free(payload);
                 free(payload2);
                 return progress;
             case ':':
-                if (NAME == step)
+                switch (step)
                 {
+                case NAME:
                     strncpy(selectedMonad->name, payload, MAX_MONAD_NAME_SIZE);
+                break;
+                case SUB:
+                    lastNewMonad = selectedMonad->prev;
                 }
                 free(payload);
                 free(payload2);
@@ -645,18 +674,17 @@ char* InterpretAddMonadsAndLinksRecursive(Monad* selectedMonad , const char* in)
                 payloadIndex = 0;
                 step++;
             break;
-            case ',':
-                Monad* rootMonadPtr = selectedMonad->rootSubMonads;
-                if (rootMonadPtr)
+            case ';':
+                if (firstNewMonad)
                 {
-                    Monad* iterator = rootMonadPtr;
+                    Monad* iterator = firstNewMonad;
                     int index = 0;
                     do
                     {
                         char* left = GenerateIDMalloc(index);
                         if (!strcmp(left , payload))
                         {
-                            Monad* iterator2 = rootMonadPtr;
+                            Monad* iterator2 = firstNewMonad;
                             int index2 = 0;
                             do
                             {
@@ -669,14 +697,14 @@ char* InterpretAddMonadsAndLinksRecursive(Monad* selectedMonad , const char* in)
                                 free(right);
                                 index2++;
                                 iterator2 = iterator2->next;
-                            } while (iterator2 != rootMonadPtr);
+                            } while (iterator2 != lastNewMonad);
                             free(left);
                             break;
                         }
                         free(left);
                         index++;
                         iterator = iterator->next;
-                    } while (iterator != rootMonadPtr);
+                    } while (iterator != lastNewMonad);
                 }
                 free(payload);
                 free(payload2);
@@ -714,6 +742,7 @@ int main(void)
     //--------------------------------------------------------------------------------------
     const int screenWidth = 800;
     const int screenHeight = 800;
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(screenWidth, screenHeight, "Monad");
     SetTargetFPS(60);
     //--------------------------------------------------------------------------------------
@@ -730,6 +759,7 @@ int main(void)
     GodMonad->next = GodMonad;
     strcpy(GodMonad->name, "Monad 0");
 
+    Vector2 mouseV2;
     char monadLog[MAX_MONAD_NAME_SIZE * 3] = "Session started.";
     Monad* selectedMonad = NULL;
     Link* selectedLink = NULL;
@@ -752,6 +782,7 @@ int main(void)
     // Main loop
     while (!WindowShouldClose())    // Detect window close button or ESC key
     {
+        mouseV2 = GetMousePosition();
         if (selectedMonad)
         {
             if (selectedLink && IsKeyPressed(KEY_DELETE))
@@ -886,10 +917,10 @@ int main(void)
                 }
                 else if (selectedDepth == selectedMonad->depth)
                 {
-                    if (!mainResult.resultMonad && Vector2Distance(selectedMonad->avgCenter, GetMousePosition()) >= 30.0f /*deny if too close to container.*/)
+                    if (!mainResult.resultMonad && Vector2Distance(selectedMonad->avgCenter, mouseV2) >= 30.0f /*deny if too close to container.*/)
                     {
                         strcpy(monadLog, "Added object [");
-                        strcat(monadLog, AddMonad(GetMousePosition(), selectedMonad)->name);
+                        strcat(monadLog, AddMonad(mouseV2, selectedMonad)->name);
                         strcat(monadLog, "].");
                     }
                     else if (selectedLink && (selectedLink->startMonad->depth == mainResult.resultMonad->depth))
@@ -903,9 +934,12 @@ int main(void)
             break;
         }
 
-        if (selectedMonad && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && (selectDrag || Vector2Distance(selectedMonad->avgCenter, GetMousePosition()) <= 30.0f))
+        if (selectedMonad && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && (selectDrag || Vector2Distance(selectedMonad->avgCenter, mouseV2) <= 30.0f))
         {
-            selectedMonad->avgCenter = GetMousePosition();
+            if (IsVector2OnScreen(mouseV2))
+            {
+                selectedMonad->avgCenter = mouseV2;
+            }
             selectDrag = true;
         }
         else
