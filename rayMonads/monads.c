@@ -34,6 +34,7 @@ The following commands need a control key held down to function:
 -Key 'T' will rename the selected object to your clipboard contents.
 -Key 'C' will copy the selected object and recursively for its sub-objects as text data into your clipboard.
 -Key 'V' will paste the clipboard contents, assuming it's good text data, recursively into named sub-objects of the selected object. This renames the selected object as well.
+Note that only links to objects of the same parent can be copy and pasted.
 */
 
 #include "raylib.h"
@@ -905,6 +906,9 @@ int main(void)
                 }
                 else if (IsKeyPressed(KEY_C))
                 {
+                    BeginDrawing();
+                    DrawText("COPYING", GetScreenHeight()/2 - 100, GetScreenWidth()/2 - 100, 48, ORANGE);
+                    EndDrawing();
                     char* out = malloc(1);
                     out[0] = '\0';
                     PrintMonadsRecursive(selectedMonad , 0 , &out);
@@ -917,6 +921,9 @@ int main(void)
                 }
                 else if (IsKeyPressed(KEY_V))
                 {
+                    BeginDrawing();
+                    DrawText("PASTING", GetScreenHeight()/2 - 100, GetScreenWidth()/2 - 100, 48, ORANGE);
+                    EndDrawing();
                     InterpretAddMonadsAndLinksRecursive(selectedMonad , GetClipboardText());
                     strcpy(monadLog, "Pasted text data in [");
                     strcat(monadLog, selectedMonad->name);
