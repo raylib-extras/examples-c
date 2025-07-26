@@ -23,11 +23,18 @@ Click any object/connection to select it.
 -If you're selecting an object currently at the current depth, right clicking another object at the same depth will create a one-way connection travelling to the right-clicked object.
 -It will instead create a one way connection from the right-clicked object if it is in a different category (container object).
 -You can change a link's travelling to object if you are selecting it and its containing object (usually will also be selected by clicking the link) by right clicking an object at the same depth.
+-If you hold the left mouse button down, you can drag the currently selected object around.
+-When selecting an object, you can rename it by simply typing and using backspace.
 
--Key 'B' to delete all connections from and to a selected object.
 -Key 'Delete' to delete a selected object and recursively delete all objects contained within that object (and so on) and their connections from and to.
 If you are selecting a link it will delete that instead of an object.
--Key 'V' will rename the selected object to your clipboard contents.
+-The Alt keys will clear the last action message.
+The following commands need a control key held down to function:
+-Key 'B' to delete all connections from and to a selected object.
+-Key 'T' will rename the selected object to your clipboard contents.
+-Key 'C' will copy the selected object and recursively for its sub-objects as text data into your clipboard.
+-Key 'V' will paste the clipboard contents, assuming it's good text data, recursively into named sub-objects of the selected object. This renames the selected object as well.
+Note that only links to objects of the same parent can be copy and pasted.
 */
 
 #include "raylib.h"
@@ -80,7 +87,7 @@ enum Response
     RESULT_RCLICK
 };
 
-// After returning recursively up the chain, certain results can overide other results depending on the situation.
+// After returning recursively up the chain, certain results can override other results depending on the situation.
 typedef struct ActiveResult
 {
     struct Monad* resultMonad;
@@ -89,12 +96,17 @@ typedef struct ActiveResult
     int resultKey, resultDepth;
 } ActiveResult;
 
+#define SCREENMARGIN 50
+
+bool IsVector2OnScreen(Vector2 pos)
+{
+    return pos.x >= SCREENMARGIN && pos.x <= GetScreenWidth() - SCREENMARGIN &&
+           pos.y >= SCREENMARGIN && pos.y <= GetScreenHeight() - SCREENMARGIN;
+}
+
 // Adds an object (subMonad) to ContainingMonadPtr. ContainingMonadPtr must not be null.
 struct Monad* AddMonad(Vector2 canvasPosition, Monad* containingMonadPtr)
 {
-    if (Vector2Distance(canvasPosition, containingMonadPtr->avgCenter) <= 30.0f) //deny if too close to container.
-        return NULL;
-
     //malloc and initialize new Monad. Always initialize variables that are not being overwritten.
     Monad* newMonadPtr = (Monad*)malloc(sizeof(Monad));
     memset(newMonadPtr, 0, sizeof(Monad));
@@ -389,16 +401,16 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int select
             }
 
             //--------------------------------
-            ActiveResult activeOveride = RecursiveDraw(iterator, functionDepth + 1, selectedDepth);
+            ActiveResult activeOverride = RecursiveDraw(iterator, functionDepth + 1, selectedDepth);
             //--------------------------------
 
-            if (activeOveride.resultMonad && !activeResult.resultLink)
+            if (activeOverride.resultMonad && !activeResult.resultLink)
             {
-                activeResult = activeOveride;
+                activeResult = activeOverride;
             }
-            else if (activeOveride.resultLink)
+            else if (activeOverride.resultLink)
             {
-                activeResult.resultLink = activeOveride.resultLink;
+                activeResult.resultLink = activeOverride.resultLink;
                 activeResult.resultMonad = MonadPtr;
             }
 
@@ -447,12 +459,349 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int select
     return activeResult;
 }
 
+enum discardAppend
+{
+    DISCARD_NONE,
+    DISCARD_FIRST,// use when str2 is not a malloc'd char array.
+    DISCARD_BOTH
+};
+
+char* AppendMallocDiscard(char* str1, char* str2, int discardLevel)
+{
+    char* new_str = NULL;
+    if ((new_str = malloc(strlen(str1)+strlen(str2)+1)))
+    {
+        new_str[0] = '\0';
+        strcat(new_str,str1);
+        strcat(new_str,str2);
+    }
+
+    if (discardLevel >= DISCARD_FIRST)
+    {
+        if(str1)
+        {
+            free(str1);
+        }
+        if(discardLevel >= DISCARD_BOTH && str2)
+        {
+            free(str2);
+        }
+    }
+
+    return new_str;
+}
+
+#define _FORBIDDEN "[]:;>\0\r\n"
+
+char* GenerateIDMalloc(int index) //sub monads limited by the highest int, really high.
+{
+    index++;//so it isn't 0
+    char* forbiddenChars = _FORBIDDEN;
+    char* ret = malloc(1);
+    ret[0] = '\0';
+    #define _HIGHESTCHAR 255
+    for (; index; index /= _HIGHESTCHAR)
+    {
+        char character[2] = {(char)(index % _HIGHESTCHAR) , '\0'};
+        char* iteratorForbidden = forbiddenChars;
+        while (iteratorForbidden[0] != '\0')
+        {
+            if (character[0] == iteratorForbidden[0])
+            {
+                character[0]++;
+            }
+            else
+            {
+                iteratorForbidden++;
+            }
+        }
+        ret = AppendMallocDiscard(ret , character , DISCARD_FIRST);
+    }
+    return ret;
+}
+
+char* PruneForbiddenCharactersMalloc(char* name)
+{
+    char* newName = malloc(strlen(name) + 1);
+    char* forbiddenChars = _FORBIDDEN;
+    int index = 0;
+    while (name[index] != '\0')
+    {
+        char* editedCharacter = &newName[index];
+        char* iteratorForbidden = forbiddenChars;
+        *editedCharacter = name[index];
+        while (iteratorForbidden[0] != '\0')
+        {
+            if (*editedCharacter == iteratorForbidden[0])
+            {
+                *editedCharacter = '_';
+                break;
+            }
+            iteratorForbidden++;
+        }
+        index++;
+    }
+    newName[index] = '\0';
+    return newName;
+}
+
+void PrintMonadsRecursive(Monad* MonadPtr, int index, char** outRef) //outref remains the same value through the entire recursion, is that okay?
+{
+    char* out = *outRef;
+    out = AppendMallocDiscard(out , "[" , DISCARD_FIRST);
+    out = AppendMallocDiscard(out , GenerateIDMalloc(index) , DISCARD_BOTH);
+    out = AppendMallocDiscard(out , ":" , DISCARD_FIRST);
+    out = AppendMallocDiscard(out , PruneForbiddenCharactersMalloc(MonadPtr->name) , DISCARD_BOTH);
+    out = AppendMallocDiscard(out , ":" , DISCARD_FIRST);
+
+    *outRef = out; //reset this before the iteration.
+    //iterate through the objects with this object treated as a category.
+    Monad* rootMonadPtr = MonadPtr->rootSubMonads;
+    if (rootMonadPtr)
+    {
+        int subIndex = 0;
+        Monad* iterator = rootMonadPtr;
+        do
+        {
+            PrintMonadsRecursive(iterator, subIndex, outRef);
+            iterator = iterator->next;
+            subIndex++;
+        } while (iterator != rootMonadPtr);
+        out = *outRef; // Old reference is most certainly freed in recursive calls. Update.
+    }
+
+    out = AppendMallocDiscard(out , ":" , DISCARD_FIRST);
+
+    //iterate through the functors in the category.
+    Link* rootLinkPtr = MonadPtr->rootSubLink;
+    if (rootLinkPtr && rootMonadPtr)
+    {
+        Link* iterator = rootLinkPtr;
+        do
+        {
+            int subIndex = 0;
+            Monad* matchingIterator = rootMonadPtr;
+            do
+            {
+                if (matchingIterator == iterator->startMonad)
+                {
+                    int subIndex2 = index;
+                    Monad* provenParentRoot = NULL;//only match with it2.
+                    Monad* matchingIterator2 = MonadPtr;//Now we're matching the function call's monad itself.
+                    do
+                    {
+                        int subIndex3 = 0;
+                        Monad* matchingIterator3 = matchingIterator2->rootSubMonads;
+                        if (matchingIterator3)
+                        {
+                            do
+                            {
+                                if (matchingIterator3 == iterator->endMonad)
+                                {
+                                    out = AppendMallocDiscard(out , GenerateIDMalloc(subIndex) , DISCARD_BOTH);
+                                    out = AppendMallocDiscard(out , ">" , DISCARD_FIRST);
+                                    out = AppendMallocDiscard(out , GenerateIDMalloc(subIndex2) , DISCARD_BOTH);
+                                    out = AppendMallocDiscard(out , ">" , DISCARD_FIRST);
+                                    out = AppendMallocDiscard(out , GenerateIDMalloc(subIndex3) , DISCARD_BOTH);
+                                    out = AppendMallocDiscard(out , ";" , DISCARD_FIRST);
+                                    break;
+                                }
+                                matchingIterator3 = matchingIterator3->next;
+                                subIndex3++;
+                            } while (matchingIterator3 != matchingIterator2->rootSubMonads);
+                        }
+                        if(provenParentRoot)
+                        {
+                            matchingIterator2 = MonadPtr->next;
+                            subIndex2++;
+                        }
+                        else
+                        {
+                            subIndex2--;
+                            if (!subIndex2)
+                            {
+                                provenParentRoot = matchingIterator2->prev;
+                                matchingIterator2 = MonadPtr->next;
+                                subIndex2 = index + 1;
+                            }
+                            else
+                            {
+                                matchingIterator2 = matchingIterator2->prev;
+                            }
+                        }
+                    } while (matchingIterator2 != provenParentRoot && subIndex2 > 0);
+                    break;
+                }
+                matchingIterator = matchingIterator->next;
+                subIndex++;
+            } while (matchingIterator != rootMonadPtr);
+            iterator = iterator->next;
+        } while (iterator != rootLinkPtr);
+    }
+
+    out = AppendMallocDiscard(out , "]" , DISCARD_FIRST);
+    *outRef = out;
+}
+
+enum interpretStep
+{
+    ID,
+    NAME,
+    SUB,
+    LINK
+};
+
+char* InterpretAddMonadsAndLinksRecursive(Monad* selectedMonad , const char* in)
+{
+    char* progress = (char*)in + 1; //adding 1 assuming it's coming right after a '['.
+    char* selfID = malloc(1);
+    char* payload = malloc(1);
+    char* payload2 = malloc(1);
+    char* payload3 = malloc(1);
+    selfID[0] = '\0';
+    payload[0] = '\0';
+    payload2[0] = '\0';
+    payload3[0] = '\0';
+    char payloadIndex = 0;
+    char step = ID;
+    int subCount = 0;
+    Monad* rootMonadPtr = selectedMonad->rootSubMonads;
+    Monad* firstNewMonad = NULL;
+    Monad* lastNewMonad = NULL;
+    if (rootMonadPtr)
+    {
+        Monad* iterator = rootMonadPtr;
+        do
+        {
+            subCount++;
+        } while (iterator != rootMonadPtr);
+    }
+    while (*progress != '\0')
+    {
+        switch(*progress)
+        {
+            case '[':
+                Vector2 oriV2 = selectedMonad->avgCenter;
+                Vector2 newV2 = (Vector2){oriV2.x + subCount*(oriV2.x < GetScreenWidth()/2 ? 60.1f : -60.1f) + 60.0f , oriV2.y + subCount*(oriV2.y < GetScreenHeight()/2 ? 60.0f : -60.0f)};
+                if(!IsVector2OnScreen(newV2))
+                {
+                    newV2 = (Vector2){GetScreenWidth() - 70.0f , GetScreenHeight() - 70.0f};
+                }
+                Monad* newMonadPtr = AddMonad(newV2 , selectedMonad);
+                if (!firstNewMonad)
+                {
+                    firstNewMonad = newMonadPtr;
+                }
+                progress = InterpretAddMonadsAndLinksRecursive(newMonadPtr , progress);
+                subCount++;
+            break;
+            case ']':
+                free(selfID);
+                free(payload);
+                free(payload2);
+                free(payload3);
+                return progress;
+            case ':':
+                switch (step)
+                {
+                case ID:
+                    selfID = AppendMallocDiscard(selfID , payload , DISCARD_BOTH);
+                break;
+                case NAME:
+                    strncpy(selectedMonad->name, payload, MAX_MONAD_NAME_SIZE);
+                break;
+                case SUB:
+                    lastNewMonad = selectedMonad->prev;
+                }
+                free(payload);
+                free(payload2);
+                free(payload3);
+                payload = malloc(1);
+                payload2 = malloc(1);
+                payload3 = malloc(1);
+                payload[0] = '\0';
+                payload2[0] = '\0';
+                payload3[0] = '\0';
+                payloadIndex = 0;
+                step++;
+            break;
+            case ';':
+                if (firstNewMonad && lastNewMonad)
+                {
+                    Monad* iterator = firstNewMonad;
+                    int index = 0;
+                    do
+                    {
+                        char* left = GenerateIDMalloc(index);
+                        if (!strcmp(left , payload))
+                        {
+                            Monad* iterator2 = firstNewMonad;
+                            int index2 = 0;
+                            do
+                            {
+                                char* right = GenerateIDMalloc(index2);
+                                if (!strcmp(selfID , payload2) && !strcmp(right , payload3) && AddLink(iterator , iterator2 , selectedMonad))
+                                {
+                                    free(right);
+                                    break;
+                                }
+                                free(right);
+                                index2++;
+                                iterator2 = iterator2->next;
+                            } while (iterator2 != lastNewMonad);
+                            free(left);
+                            break;
+                        }
+                        free(left);
+                        index++;
+                        iterator = iterator->next;
+                    } while (iterator != lastNewMonad);
+                }
+                free(payload);
+                free(payload2);
+                free(payload3);
+                payload = malloc(1);
+                payload2 = malloc(1);
+                payload3 = malloc(1);
+                payload[0] = '\0';
+                payload2[0] = '\0';
+                payload3[0] = '\0';
+                payloadIndex = 0;
+            break;
+            case '>':
+                payloadIndex++;
+            break;
+            default:
+                char addChar[2] = {*progress , '\0'};
+                switch (payloadIndex)
+                {
+                    case 0:
+                        payload = AppendMallocDiscard(payload , addChar , DISCARD_FIRST);
+                    break;
+                    case 1:
+                        payload2 = AppendMallocDiscard(payload2 , addChar , DISCARD_FIRST);
+                    break;
+                    case 2:
+                        payload3 = AppendMallocDiscard(payload3 , addChar , DISCARD_FIRST);
+                }
+        }
+        progress++;
+    }
+    free(ID);
+    free(payload);
+    free(payload2);
+    free(payload3);
+    printf("Monad - no end bracket: %s\n" , selectedMonad->name);
+    return progress;
+}
+
 int main(void)
 {
     // Initialization
     //--------------------------------------------------------------------------------------
     const int screenWidth = 800;
     const int screenHeight = 800;
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(screenWidth, screenHeight, "Monad");
     SetTargetFPS(60);
     //--------------------------------------------------------------------------------------
@@ -469,11 +818,15 @@ int main(void)
     GodMonad->next = GodMonad;
     strcpy(GodMonad->name, "Monad 0");
 
+    Vector2 mouseV2;
     char monadLog[MAX_MONAD_NAME_SIZE * 3] = "Session started.";
     Monad* selectedMonad = NULL;
     Link* selectedLink = NULL;
     int selectedDepth = 0;
     ActiveResult mainResult = (ActiveResult){ 0 };
+    bool selectDrag = false;
+
+    int backspaceDelay = 0;
     //--------------------------------------------------------------------------------------
 
     // Testing
@@ -484,14 +837,19 @@ int main(void)
 
     Monad* example = AddMonad((Vector2) { 400, 400 }, GodMonad);
     AddMonad((Vector2) { 440, 410 }, example);
-    AddMonad((Vector2) { 400, 450 }, example);
-    AddMonad((Vector2) { 500, 500 }, example);
+    AddLink(AddMonad((Vector2) { 400, 450 }, example) , AddMonad((Vector2) { 500, 500 }, example) , example);
     //--------------------------------------------------------------------------------------
 
-    // Main game loop
+    // Main loop
     while (!WindowShouldClose())    // Detect window close button or ESC key
     {
-        if (selectedMonad)
+        mouseV2 = GetMousePosition();
+
+        if(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT))
+        {
+            strcpy(monadLog , "");
+        }
+        else if (selectedMonad)
         {
             if (selectedLink && IsKeyPressed(KEY_DELETE))
             {
@@ -511,33 +869,115 @@ int main(void)
             {
                 if (selectedMonad == GodMonad)
                 {
-                    strcpy(monadLog, "Cannot delete Monad 0.");
+                    strcpy(monadLog, "Cannot delete [");
+                    strcat(monadLog, selectedMonad->name);
+                    strcat(monadLog, "]: Is root.");
                 }
                 else
                 {
-                    strcpy(monadLog, "Deleted object [");
-                    strcat(monadLog, selectedMonad->name);
-                    strcat(monadLog, "].");
-                    selectedMonad->deleteFrame = DELETE_PRELINK;
+                    if (!selectedMonad->deleteFrame)
+                    {
+                        strcpy(monadLog, "Deleted object [");
+                        strcat(monadLog, selectedMonad->name);
+                        strcat(monadLog, "].");
+                        selectedMonad->deleteFrame = DELETE_PRELINK;
+                    }
                     selectedMonad = NULL;
                 }
             }
-            else if (IsKeyPressed(KEY_B))
+            else if(IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL))
             {
-                strcpy(monadLog, "Broke all links from and to [");
-                strcat(monadLog, selectedMonad->name);
-                strcat(monadLog, "].");
-                selectedMonad->deleteFrame = DELETE_ONLYLINK;
+                if (IsKeyPressed(KEY_T))
+                {
+                    strcpy(monadLog, "Renamed [");
+                    strcat(monadLog, selectedMonad->name);
+                    strcat(monadLog, "] to [");
+                    strncpy(selectedMonad->name, GetClipboardText(), MAX_MONAD_NAME_SIZE);
+                    selectedMonad->name[MAX_MONAD_NAME_SIZE - 1] = '\0'; //ensures NULL termination.
+                    strcat(monadLog, selectedMonad->name);
+                    strcat(monadLog, "].");
+                }
+                else if (!selectedMonad->deleteFrame && IsKeyPressed(KEY_B))
+                {
+                    strcpy(monadLog, "Broke all links from and to [");
+                    strcat(monadLog, selectedMonad->name);
+                    strcat(monadLog, "].");
+                    selectedMonad->deleteFrame = DELETE_ONLYLINK;
+                }
+                else if (IsKeyPressed(KEY_C))
+                {
+                    BeginDrawing();
+                    DrawText("COPYING", GetScreenHeight()/2 - 100, GetScreenWidth()/2 - 100, 48, ORANGE);
+                    EndDrawing();
+                    char* out = malloc(1);
+                    out[0] = '\0';
+                    PrintMonadsRecursive(selectedMonad , 0 , &out);
+                    printf("%s\n" , out);
+                    SetClipboardText(out);
+                    free(out);
+                    strcpy(monadLog, "Copied text data from [");
+                    strcat(monadLog, selectedMonad->name);
+                    strcat(monadLog, "] to clipboard.");   
+                }
+                else if (IsKeyPressed(KEY_V))
+                {
+                    BeginDrawing();
+                    DrawText("PASTING", GetScreenHeight()/2 - 100, GetScreenWidth()/2 - 100, 48, ORANGE);
+                    EndDrawing();
+                    InterpretAddMonadsAndLinksRecursive(selectedMonad , GetClipboardText());
+                    strcpy(monadLog, "Pasted text data in [");
+                    strcat(monadLog, selectedMonad->name);
+                    strcat(monadLog, "] from clipboard.");   
+                }
             }
-            else if (IsKeyPressed(KEY_V))
+            else if(IsKeyDown(KEY_BACKSPACE))
             {
-                strcpy(monadLog, "Renamed [");
-                strcat(monadLog, selectedMonad->name);
-                strcat(monadLog, "] to [");
-                strncpy(selectedMonad->name, GetClipboardText(), MAX_MONAD_NAME_SIZE);
-                selectedMonad->name[MAX_MONAD_NAME_SIZE - 1] = '\0'; //ensures NULL termination.
-                strcat(monadLog, selectedMonad->name);
-                strcat(monadLog, "].");
+                if (backspaceDelay)
+                {
+                    backspaceDelay--;
+                }
+                else
+                {
+                    selectedMonad->name[strlen(selectedMonad->name) - 1] = '\0';
+                    backspaceDelay = 5;
+                }
+            }
+            else
+            {
+                backspaceDelay = 0;
+                int key = GetKeyPressed();
+                if (key && key != KEY_LEFT_SHIFT && key != KEY_RIGHT_SHIFT && key != KEY_LEFT_SUPER && key != KEY_RIGHT_SUPER)
+                {
+                    int nameLength = strlen(selectedMonad->name);
+                    if (nameLength < MAX_MONAD_NAME_SIZE - 1)
+                    {
+                        bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+                        if (key >= KEY_A && key <= KEY_Z) 
+                        {
+                            char c = 'a' + (key - KEY_A);
+                            if (shift) 
+                            {
+                                c -= 32;
+                            }
+                            key = c;
+                        }
+                        if (key >= KEY_ZERO && key <= KEY_NINE) 
+                        {
+                            if (shift) {
+                                const char shifted[] = {')', '!', '@', '#', '$', '%', '^', '&', '*', '('};
+                                key = shifted[key - KEY_ZERO];
+                            } else {
+                                key = '0' + (key - KEY_ZERO);
+                            }
+                        }
+                        if (key == KEY_SPACE) 
+                        {
+                            key = ' ';
+                        }
+                        selectedMonad->name[nameLength] = (char)key;
+                        selectedMonad->name[nameLength + 1] = '\0';
+                    }
+                }
             }
         }
 
@@ -606,10 +1046,10 @@ int main(void)
                 }
                 else if (selectedDepth == selectedMonad->depth)
                 {
-                    if (!mainResult.resultMonad)
+                    if (!mainResult.resultMonad && Vector2Distance(selectedMonad->avgCenter, mouseV2) >= 30.0f /*deny if too close to container.*/)
                     {
                         strcpy(monadLog, "Added object [");
-                        strcat(monadLog, AddMonad(GetMousePosition(), selectedMonad)->name);
+                        strcat(monadLog, AddMonad(mouseV2, selectedMonad)->name);
                         strcat(monadLog, "].");
                     }
                     else if (selectedLink && (selectedLink->startMonad->depth == mainResult.resultMonad->depth))
@@ -621,6 +1061,19 @@ int main(void)
                 }
             }
             break;
+        }
+
+        if (selectedMonad && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && (selectDrag || Vector2Distance(selectedMonad->avgCenter, mouseV2) <= 30.0f))
+        {
+            if (IsVector2OnScreen(mouseV2))
+            {
+                selectedMonad->avgCenter = mouseV2;
+            }
+            selectDrag = true;
+        }
+        else
+        {
+            selectDrag = false;
         }
 
         float mouseMove = GetMouseWheelMove();
