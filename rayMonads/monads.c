@@ -658,6 +658,10 @@ char* InterpretAddMonadsAndLinksRecursive(Monad* selectedMonad , const char* in)
     char* payload = malloc(1);
     char* payload2 = malloc(1);
     char* payload3 = malloc(1);
+    Monad* rootMonadPtr = selectedMonad->rootSubMonads;
+    Monad* newMonadPtr = NULL;
+    Monad* firstNewMonad = NULL;
+    Monad* lastNewMonad = NULL;
     selfID[0] = '\0';
     payload[0] = '\0';
     payload2[0] = '\0';
@@ -665,9 +669,6 @@ char* InterpretAddMonadsAndLinksRecursive(Monad* selectedMonad , const char* in)
     char payloadIndex = 0;
     char step = ID;
     int subCount = 0;
-    Monad* rootMonadPtr = selectedMonad->rootSubMonads;
-    Monad* firstNewMonad = NULL;
-    Monad* lastNewMonad = NULL;
     if (rootMonadPtr)
     {
         Monad* iterator = rootMonadPtr;
@@ -687,7 +688,7 @@ char* InterpretAddMonadsAndLinksRecursive(Monad* selectedMonad , const char* in)
                 {
                     newV2 = (Vector2){GetScreenWidth() - 70.0f , GetScreenHeight() - 70.0f};
                 }
-                Monad* newMonadPtr = AddMonad(newV2 , selectedMonad);
+                newMonadPtr = AddMonad(newV2 , selectedMonad);
                 if (!firstNewMonad)
                 {
                     firstNewMonad = newMonadPtr;
@@ -711,7 +712,7 @@ char* InterpretAddMonadsAndLinksRecursive(Monad* selectedMonad , const char* in)
                     strncpy(selectedMonad->name, payload, MAX_MONAD_NAME_SIZE);
                 break;
                 case SUB:
-                    lastNewMonad = selectedMonad->prev;
+                    lastNewMonad = newMonadPtr;
                 }
                 free(payload);
                 free(payload2);
@@ -729,6 +730,7 @@ char* InterpretAddMonadsAndLinksRecursive(Monad* selectedMonad , const char* in)
                 if (firstNewMonad && lastNewMonad)
                 {
                     Monad* iterator = firstNewMonad;
+                    Monad* stopMonad = lastNewMonad->next;
                     int index = 0;
                     do
                     {
@@ -748,14 +750,14 @@ char* InterpretAddMonadsAndLinksRecursive(Monad* selectedMonad , const char* in)
                                 free(right);
                                 index2++;
                                 iterator2 = iterator2->next;
-                            } while (iterator2 != lastNewMonad);
+                            } while (iterator2 != stopMonad);
                             free(left);
                             break;
                         }
                         free(left);
                         index++;
                         iterator = iterator->next;
-                    } while (iterator != lastNewMonad);
+                    } while (iterator != stopMonad);
                 }
                 free(payload);
                 free(payload2);
