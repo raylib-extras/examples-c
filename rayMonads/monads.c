@@ -670,14 +670,14 @@ void PrintMonadsRecursive(Monad* MonadPtr, Monad* OriginalMonad, char** outRef)
                 Monad* matchingIterator = rootMonadPtr;
                 do
                 {
-                    if (matchingIterator == (jumpBy ? iterator->endMonad : iterator->startMonad))
+                    bool startFound = matchingIterator == iterator->startMonad;
+                    if (startFound || matchingIterator == iterator->endMonad)
                     {
-                        out = AppendMallocDiscard(out , GenerateIDMalloc(subIndex) , DISCARD_BOTH);// start monad index
+                        out = AppendMallocDiscard(out , GenerateIDMalloc(subIndex) , DISCARD_BOTH); // Start monad index.
                         out = AppendMallocDiscard(out , ">" , DISCARD_FIRST);
                         out = AppendMallocDiscard(out , GenerateIDMalloc(jumpBy) , DISCARD_BOTH); //Must "jump up" by this amount.
-                        out = AppendMallocDiscard(out , ChainCarrotAfterJumpStringRecursiveMalloc(depthResult.sharedMonad , jumpBy ? iterator->startMonad : iterator->endMonad), DISCARD_BOTH);
+                        out = AppendMallocDiscard(out , ChainCarrotAfterJumpStringRecursiveMalloc(depthResult.sharedMonad , startFound ? iterator->endMonad : iterator->startMonad), DISCARD_BOTH); // Make these turns.
                         out = AppendMallocDiscard(out , ";" , DISCARD_FIRST);
-                        break;
                     }
                     matchingIterator = matchingIterator->next;
                     subIndex++;
