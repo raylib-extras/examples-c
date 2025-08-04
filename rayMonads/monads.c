@@ -33,8 +33,7 @@ The following commands need a control key held down to function:
 -Key 'B' to delete all connections from and to a selected object.
 -Key 'T' will rename the selected object to your clipboard contents.
 -Key 'C' will copy the selected object and recursively for its sub-objects as text data into your clipboard.
--Key 'V' will paste the clipboard contents, assuming it's good text data, recursively into named sub-objects of the selected object. This renames the selected object as well.
-Note that only links to objects of the same parent can be copy and pasted.
+-Key 'V' will paste the text data recursively as a new object contained by the selected object.
 */
 
 #include "raylib.h"
@@ -96,7 +95,7 @@ typedef struct ActiveResult
     int resultKey, resultDepth;
 } ActiveResult;
 
-#define SCREENMARGIN 50
+#define SCREENMARGIN 20
 
 bool IsVector2OnScreen(Vector2 pos)
 {
@@ -318,7 +317,7 @@ bool RemoveLink(Link* linkPtr, Monad* containingMonadPtr)
 #define INSCOPE functionDepth == selectedDepth
 #define PRESCOPE functionDepth < selectedDepth
 
-// Renders all Monads and Link. Returns activated Monad, it's container, if any and the depth. MonadPtr must not be null.
+//Renders all Monads and Link. Returns activated Monad, it's container, if any and the depth. MonadPtr must not be null.
 //TODO: Every recursive call adds all of the instructions of the function to RAM again. Which parts of this function can be separated into its own function so they don't get loaded in every time?
 //Or maybe... the compiler catches it already.
 struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int selectedDepth)
@@ -390,7 +389,9 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int select
                     break;
                 }
                 else
+                {
                     DrawLineV(MonadPtr->avgCenter, iterator->avgCenter, RED); // something went wrong if still shows.
+                }
                 iterator = next;
                 continue;
             }
@@ -545,12 +546,92 @@ char* PruneForbiddenCharactersMalloc(char* name)
     return newName;
 }
 
-void PrintMonadsRecursive(Monad* MonadPtr, int index, char** outRef) //outref remains the same value through the entire recursion, is that okay?
+//Finds interlinks.
+typedef struct DepthResult
+{
+    Monad* containerMonad;
+    Monad* cousinMonad;
+    Monad* sharedMonad; //highest point where both container and cousin can be both traced to.
+    int depth;
+    int sharedDepth;
+
+} DepthResult;
+DepthResult FindDepthOfObject(Monad* selectedMonad , Monad* findMonad , Monad* findCousinMonad , int Depth)
+{
+    if (selectedMonad == findMonad)
+    {
+        return (DepthResult){NULL , NULL , NULL , Depth , -1};
+    }
+    Monad* rootMonadPtr = selectedMonad->rootSubMonads;
+    if (rootMonadPtr)
+    {
+        Monad* iterator = rootMonadPtr;
+        do
+        {
+            DepthResult result = FindDepthOfObject(iterator , findMonad , findCousinMonad , Depth + 1);
+            if (result.depth != -1)
+            {
+                if (!result.containerMonad)
+                {
+                    result.containerMonad = selectedMonad;
+                }
+                if (result.sharedDepth == -1 && findCousinMonad)
+                {
+                    Monad* iterator2 = rootMonadPtr;
+                    do
+                    {
+                        DepthResult cousinResult = FindDepthOfObject(iterator2 , findCousinMonad , NULL , Depth + 1);
+                        if (cousinResult.depth != -1) // If it's found, simply
+                        {
+                            result.sharedMonad = selectedMonad;
+                            result.cousinMonad = cousinResult.containerMonad;
+                            result.sharedDepth = Depth;
+                            break;
+                        }
+                        iterator2 = iterator2->next;
+                    } while (iterator2 != rootMonadPtr);
+                }
+                return result;
+            }
+            iterator = iterator->next;
+        } while (iterator != rootMonadPtr);
+    }
+    return (DepthResult){NULL , NULL , NULL , -1 , -1};
+}
+
+char* ChainCarrotAfterJumpStringRecursiveMalloc(Monad* sharedMonad , Monad* endMonad)
+{
+    Monad* matchingIterator = sharedMonad->rootSubMonads;
+    char* ret = AppendMallocDiscard("","",DISCARD_NONE); // must malloc.
+    if (matchingIterator)
+    {
+        int index = 0;
+        do
+        {
+            if (matchingIterator == endMonad)
+            {
+                ret = AppendMallocDiscard(ret , ">", DISCARD_FIRST);
+                return AppendMallocDiscard(ret , GenerateIDMalloc(index) , DISCARD_BOTH);
+            }
+            char* test = AppendMallocDiscard(ChainCarrotAfterJumpStringRecursiveMalloc(matchingIterator , endMonad) , "" , DISCARD_FIRST);
+            if (test[0] != '\0') //mom get the camera.
+            {
+                ret = AppendMallocDiscard(ret , ">" , DISCARD_FIRST);
+                ret = AppendMallocDiscard(ret , GenerateIDMalloc(index) , DISCARD_BOTH);
+                return AppendMallocDiscard(ret , test , DISCARD_BOTH);
+            }
+            free(test);
+            index++;
+            matchingIterator = matchingIterator->next;
+        } while (matchingIterator != sharedMonad->rootSubMonads);
+    }
+    return ret;
+}
+
+void PrintMonadsRecursive(Monad* MonadPtr, Monad* OriginalMonad, char** outRef)
 {
     char* out = *outRef;
     out = AppendMallocDiscard(out , "[" , DISCARD_FIRST);
-    out = AppendMallocDiscard(out , GenerateIDMalloc(index) , DISCARD_BOTH);
-    out = AppendMallocDiscard(out , ":" , DISCARD_FIRST);
     out = AppendMallocDiscard(out , PruneForbiddenCharactersMalloc(MonadPtr->name) , DISCARD_BOTH);
     out = AppendMallocDiscard(out , ":" , DISCARD_FIRST);
 
@@ -563,7 +644,7 @@ void PrintMonadsRecursive(Monad* MonadPtr, int index, char** outRef) //outref re
         Monad* iterator = rootMonadPtr;
         do
         {
-            PrintMonadsRecursive(iterator, subIndex, outRef);
+            PrintMonadsRecursive(iterator , OriginalMonad , outRef);
             iterator = iterator->next;
             subIndex++;
         } while (iterator != rootMonadPtr);
@@ -579,104 +660,50 @@ void PrintMonadsRecursive(Monad* MonadPtr, int index, char** outRef) //outref re
         Link* iterator = rootLinkPtr;
         do
         {
-            int subIndex = 0;
-            Monad* matchingIterator = rootMonadPtr;
-            do
+            DepthResult depthResult = FindDepthOfObject(OriginalMonad , iterator->startMonad , iterator->endMonad , 0);
+            if (depthResult.sharedMonad)
             {
-                if (matchingIterator == iterator->startMonad)
+                int jumpBy = depthResult.depth - depthResult.sharedDepth - 1;
+                int subIndex = 0;
+                printf("DR container:%p cousin:%p shared:%p depth: %i shared depth: %i\n", depthResult.containerMonad , depthResult.cousinMonad , depthResult.sharedMonad , depthResult.depth , depthResult.sharedDepth);    
+                printf("%p->%p needs a jump by: %i\n" , iterator->startMonad , iterator->endMonad , jumpBy);
+                Monad* matchingIterator = rootMonadPtr;
+                do
                 {
-                    int subIndex2 = index;
-                    Monad* provenParentRoot = NULL;//only match with it2.
-                    Monad* matchingIterator2 = MonadPtr;//Now we're matching the function call's monad itself.
-                    do
+                    bool startFound = matchingIterator == iterator->startMonad;
+                    if (startFound || matchingIterator == iterator->endMonad)
                     {
-                        int subIndex3 = 0;
-                        Monad* matchingIterator3 = matchingIterator2->rootSubMonads;
-                        if (matchingIterator3)
-                        {
-                            do
-                            {
-                                if (matchingIterator3 == iterator->endMonad)
-                                {
-                                    out = AppendMallocDiscard(out , GenerateIDMalloc(subIndex) , DISCARD_BOTH);
-                                    out = AppendMallocDiscard(out , ">" , DISCARD_FIRST);
-                                    out = AppendMallocDiscard(out , GenerateIDMalloc(subIndex2) , DISCARD_BOTH);
-                                    out = AppendMallocDiscard(out , ">" , DISCARD_FIRST);
-                                    out = AppendMallocDiscard(out , GenerateIDMalloc(subIndex3) , DISCARD_BOTH);
-                                    out = AppendMallocDiscard(out , ";" , DISCARD_FIRST);
-                                    break;
-                                }
-                                matchingIterator3 = matchingIterator3->next;
-                                subIndex3++;
-                            } while (matchingIterator3 != matchingIterator2->rootSubMonads);
-                        }
-                        if(provenParentRoot)
-                        {
-                            matchingIterator2 = MonadPtr->next;
-                            subIndex2++;
-                        }
-                        else
-                        {
-                            subIndex2--;
-                            if (!subIndex2)
-                            {
-                                provenParentRoot = matchingIterator2->prev;
-                                matchingIterator2 = MonadPtr->next;
-                                subIndex2 = index + 1;
-                            }
-                            else
-                            {
-                                matchingIterator2 = matchingIterator2->prev;
-                            }
-                        }
-                    } while (matchingIterator2 != provenParentRoot && subIndex2 > 0);
-                    break;
-                }
-                matchingIterator = matchingIterator->next;
-                subIndex++;
-            } while (matchingIterator != rootMonadPtr);
+                        out = AppendMallocDiscard(out , GenerateIDMalloc(subIndex) , DISCARD_BOTH); // Start monad index.
+                        out = AppendMallocDiscard(out , ">" , DISCARD_FIRST);
+                        out = AppendMallocDiscard(out , GenerateIDMalloc(jumpBy) , DISCARD_BOTH); //Must "jump up" by this amount.
+                        out = AppendMallocDiscard(out , ChainCarrotAfterJumpStringRecursiveMalloc(depthResult.sharedMonad , startFound ? iterator->endMonad : iterator->startMonad), DISCARD_BOTH); // Make these turns.
+                        out = AppendMallocDiscard(out , ";" , DISCARD_FIRST);
+                    }
+                    matchingIterator = matchingIterator->next;
+                    subIndex++;
+                } while (matchingIterator != rootMonadPtr);
+            }
             iterator = iterator->next;
         } while (iterator != rootLinkPtr);
     }
-
     out = AppendMallocDiscard(out , "]" , DISCARD_FIRST);
     *outRef = out;
 }
 
 enum interpretStep
 {
-    ID,
     NAME,
     SUB,
     LINK
 };
 
-char* InterpretAddMonadsAndLinksRecursive(Monad* selectedMonad , const char* in)
+char* InterpretAddMonadsRecursive(Monad* selectedMonad , const char* in)
 {
     char* progress = (char*)in + 1; //adding 1 assuming it's coming right after a '['.
-    char* selfID = malloc(1);
     char* payload = malloc(1);
-    char* payload2 = malloc(1);
-    char* payload3 = malloc(1);
-    Monad* rootMonadPtr = selectedMonad->rootSubMonads;
-    Monad* newMonadPtr = NULL;
-    Monad* firstNewMonad = NULL;
-    Monad* lastNewMonad = NULL;
-    selfID[0] = '\0';
     payload[0] = '\0';
-    payload2[0] = '\0';
-    payload3[0] = '\0';
-    char payloadIndex = 0;
-    char step = ID;
+    char step = NAME;
     int subCount = 0;
-    if (rootMonadPtr)
-    {
-        Monad* iterator = rootMonadPtr;
-        do
-        {
-            subCount++;
-        } while (iterator != rootMonadPtr);
-    }
     while (*progress != '\0')
     {
         switch(*progress)
@@ -688,121 +715,168 @@ char* InterpretAddMonadsAndLinksRecursive(Monad* selectedMonad , const char* in)
                 {
                     newV2 = (Vector2){GetScreenWidth() - 70.0f , GetScreenHeight() - 70.0f};
                 }
-                newMonadPtr = AddMonad(newV2 , selectedMonad);
-                if (!firstNewMonad)
-                {
-                    firstNewMonad = newMonadPtr;
-                }
-                progress = InterpretAddMonadsAndLinksRecursive(newMonadPtr , progress);
+                progress = InterpretAddMonadsRecursive(AddMonad(newV2 , selectedMonad) , progress);
                 subCount++;
             break;
             case ']':
-                free(selfID);
                 free(payload);
-                free(payload2);
-                free(payload3);
                 return progress;
             case ':':
-                switch (step)
+                if (step == NAME)
                 {
-                case ID:
-                    selfID = AppendMallocDiscard(selfID , payload , DISCARD_FIRST);
-                break;
-                case NAME:
                     strncpy(selectedMonad->name, payload, MAX_MONAD_NAME_SIZE);
-                break;
-                case SUB:
-                    lastNewMonad = newMonadPtr;
                 }
                 free(payload);
-                free(payload2);
-                free(payload3);
                 payload = malloc(1);
-                payload2 = malloc(1);
-                payload3 = malloc(1);
                 payload[0] = '\0';
-                payload2[0] = '\0';
-                payload3[0] = '\0';
-                payloadIndex = 0;
                 step++;
             break;
-            case ';':
-                if (firstNewMonad && lastNewMonad)
-                {
-                    Monad* iterator = firstNewMonad;
-                    Monad* stopMonad = lastNewMonad->next;
-                    int index = 0;
-                    do
-                    {
-                        char* left = GenerateIDMalloc(index);
-                        if (!strcmp(left , payload))
-                        {
-                            Monad* iterator2 = firstNewMonad;
-                            int index2 = 0;
-                            do
-                            {
-                                char* right = GenerateIDMalloc(index2);
-                                if (!strcmp(selfID , payload2) && !strcmp(right , payload3) && AddLink(iterator , iterator2 , selectedMonad))
-                                {
-                                    free(right);
-                                    break;
-                                }
-                                free(right);
-                                index2++;
-                                iterator2 = iterator2->next;
-                            } while (iterator2 != stopMonad);
-                            free(left);
-                            break;
-                        }
-                        free(left);
-                        index++;
-                        iterator = iterator->next;
-                    } while (iterator != stopMonad);
-                }
-                free(payload);
-                free(payload2);
-                free(payload3);
-                payload = malloc(1);
-                payload2 = malloc(1);
-                payload3 = malloc(1);
-                payload[0] = '\0';
-                payload2[0] = '\0';
-                payload3[0] = '\0';
-                payloadIndex = 0;
-            break;
-            case '>':
-                payloadIndex++;
-            break;
             default:
-                char addChar[2] = {*progress , '\0'};
-                switch (payloadIndex)
+                if (step != LINK)
                 {
-                    case 0:
-                        payload = AppendMallocDiscard(payload , addChar , DISCARD_FIRST);
-                    break;
-                    case 1:
-                        payload2 = AppendMallocDiscard(payload2 , addChar , DISCARD_FIRST);
-                    break;
-                    case 2:
-                        payload3 = AppendMallocDiscard(payload3 , addChar , DISCARD_FIRST);
+                    char addChar[2] = {*progress , '\0'};
+                    payload = AppendMallocDiscard(payload , addChar , DISCARD_FIRST);
                 }
         }
         progress++;
     }
-    free(selfID);
     free(payload);
-    free(payload2);
-    free(payload3);
     printf("Monad - no end bracket: %s\n" , selectedMonad->name);
     return progress;
+}
+
+typedef struct ParentedMonad
+{
+    struct Monad* monad;
+    struct ParentedMonad* parentChain;
+} ParentedMonad;
+char* InterpretLinksRecursive(Monad* selectedMonad , ParentedMonad parentInfo , const char* in)
+{
+    char* progress = (char*)in + 1; //adding 1 assuming it's coming right after a '['.
+    char* payload = malloc(1);
+    Monad* rootMonadPtr = selectedMonad->rootSubMonads;
+    Monad* subIterator = rootMonadPtr;
+    Monad* findStartIterator = NULL;
+    Monad* findEnderIterator = NULL;
+    payload[0] = '\0';
+    char payloadIndex = 0;
+    char step = NAME;
+    while (*progress != '\0')
+    {
+        switch(*progress)
+        {
+            case '[':
+            if (subIterator)
+            {
+                progress = InterpretLinksRecursive(subIterator , (ParentedMonad){selectedMonad , &parentInfo} , progress);
+                subIterator = subIterator->next;
+            }
+            break;
+            case ']':
+                free(payload);
+                return progress;
+            case ':':
+                free(payload);
+                payload = malloc(1);
+                payload[0] = '\0';
+                payloadIndex = 0;
+                step++;
+            break;
+            case ';':
+                findEnderIterator = findEnderIterator->rootSubMonads;
+                Monad* rootEnderIterator = findEnderIterator;
+                int endIndex = 0;
+                do
+                {
+                    if (!strcmp(GenerateIDMalloc(endIndex) , payload))
+                    {
+                        break;
+                    }
+                    findEnderIterator = findEnderIterator->next;
+                    endIndex++;
+                } while (findEnderIterator != rootEnderIterator);
+                AddLink(findStartIterator , findEnderIterator , selectedMonad);
+                free(payload);
+                payload = malloc(1);
+                payload[0] = '\0';
+                payloadIndex = 0;
+            break;
+            case '>':
+                switch (payloadIndex)
+                {
+                    case 0:
+                        findStartIterator = rootMonadPtr;
+                        int startIndex = 0;
+                        do
+                        {
+                            if (!strcmp(GenerateIDMalloc(startIndex) , payload))
+                            {
+                                break;
+                            }
+                            findStartIterator = findStartIterator->next;
+                            startIndex++;
+                        } while (findStartIterator != rootMonadPtr);
+                        payloadIndex++;
+                    break;
+                    case 1://jump
+                        findEnderIterator = selectedMonad;
+                        ParentedMonad* currentChain = &parentInfo;
+                        int jumpIndex = 0;
+                        while (currentChain && strcmp(GenerateIDMalloc(jumpIndex) , payload)) 
+                        {
+                            findEnderIterator = currentChain->monad;
+                            currentChain = currentChain->parentChain;
+                            jumpIndex++;
+                        }
+                        payloadIndex++;
+                    break;
+                    case 2:
+                        findEnderIterator = findEnderIterator->rootSubMonads;
+                        Monad* rootEnderIterator = findEnderIterator;
+                        int endIndex = 0;
+                        do
+                        {
+                            if (!strcmp(GenerateIDMalloc(endIndex) , payload))
+                            {
+                                break;
+                            }
+                            findEnderIterator = findEnderIterator->next;
+                            endIndex++;
+                        } while (findEnderIterator != rootEnderIterator);
+                }
+                free(payload);
+                payload = malloc(1);
+                payload[0] = '\0';
+            break;
+            default:
+                if(step == LINK)
+                {
+                    char addChar[2] = {*progress , '\0'};
+                    payload = AppendMallocDiscard(payload , addChar , DISCARD_FIRST);
+                }
+        }
+        progress++;
+    }
+    return progress;
+}
+
+void MonadsExample(Monad* GodMonad)
+{
+    AddMonad((Vector2) { 600, 500 }, GodMonad);
+    AddMonad((Vector2) { 200, 400 }, GodMonad);
+    Monad* interLinkExample = AddMonad((Vector2) { 100, 100 }, AddMonad((Vector2) { 350, 200 }, GodMonad));
+    Monad* example = AddMonad((Vector2) { 400, 400 }, GodMonad);
+    Monad* interLinkExample2 = AddMonad((Vector2) { 440, 410 }, example);
+    AddLink(AddMonad((Vector2) { 400, 450 }, example) , AddMonad((Vector2) { 500, 500 }, example) , example);
+    AddLink(interLinkExample , interLinkExample2 , example);
 }
 
 int main(void)
 {
     // Initialization
     //--------------------------------------------------------------------------------------
-    const int screenWidth = 800;
-    const int screenHeight = 800;
+    int screenWidth = 800;
+    int screenHeight = 800;
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(screenWidth, screenHeight, "Monad");
     SetTargetFPS(60);
@@ -833,13 +907,7 @@ int main(void)
 
     // Testing
     //--------------------------------------------------------------------------------------    
-    AddMonad((Vector2) { 600, 500 }, GodMonad);
-    AddMonad((Vector2) { 200, 400 }, GodMonad);
-    AddMonad((Vector2) { 100, 100 }, AddMonad((Vector2) { 350, 200 }, GodMonad));
-
-    Monad* example = AddMonad((Vector2) { 400, 400 }, GodMonad);
-    AddMonad((Vector2) { 440, 410 }, example);
-    AddLink(AddMonad((Vector2) { 400, 450 }, example) , AddMonad((Vector2) { 500, 500 }, example) , example);
+    MonadsExample(GodMonad);
     //--------------------------------------------------------------------------------------
 
     // Main loop
@@ -913,20 +981,24 @@ int main(void)
                     EndDrawing();
                     char* out = malloc(1);
                     out[0] = '\0';
-                    PrintMonadsRecursive(selectedMonad , 0 , &out);
-                    printf("%s\n" , out);
+                    PrintMonadsRecursive(selectedMonad , selectedMonad , &out);
                     SetClipboardText(out);
+                    printf("%s\n",out);
                     free(out);
                     strcpy(monadLog, "Copied text data from [");
                     strcat(monadLog, selectedMonad->name);
                     strcat(monadLog, "] to clipboard.");   
                 }
-                else if (IsKeyPressed(KEY_V))
+                else if (IsKeyPressed(KEY_V) && IsVector2OnScreen(mouseV2))
                 {
                     BeginDrawing();
                     DrawText("PASTING", GetScreenHeight()/2 - 100, GetScreenWidth()/2 - 100, 48, ORANGE);
                     EndDrawing();
-                    InterpretAddMonadsAndLinksRecursive(selectedMonad , GetClipboardText());
+                    Monad* pastedOverMonad = AddMonad(mouseV2 , selectedMonad);
+                    InterpretAddMonadsRecursive(pastedOverMonad , GetClipboardText());
+                    InterpretLinksRecursive(pastedOverMonad , (ParentedMonad){NULL , NULL} , GetClipboardText());
+                    selectedMonad = pastedOverMonad;
+                    pastedOverMonad->avgCenter = mouseV2;
                     strcpy(monadLog, "Pasted text data in [");
                     strcat(monadLog, selectedMonad->name);
                     strcat(monadLog, "] from clipboard.");   
@@ -966,7 +1038,7 @@ int main(void)
                         if (key >= KEY_ZERO && key <= KEY_NINE) 
                         {
                             if (shift) {
-                                const char shifted[] = {')', '!', '@', '#', '$', '%', '^', '&', '*', '('};
+                                char shifted[] = {')', '!', '@', '#', '$', '%', '^', '&', '*', '('};
                                 key = shifted[key - KEY_ZERO];
                             } else {
                                 key = '0' + (key - KEY_ZERO);
@@ -1019,50 +1091,50 @@ int main(void)
 
         switch (mainResult.resultKey)
         {
-        case RESULT_NONE:
-            break;
-        case RESULT_CLICK:
-            selectedMonad = mainResult.resultMonad;
-            selectedLink = mainResult.resultLink;
-            printf("Object %p, Link %p\n", selectedMonad, selectedLink);
-            break;
-        case RESULT_RCLICK:
-            if (selectedMonad)
-            {
-                if (mainResult.resultMonad && mainResult.resultContainerMonad && (mainResult.resultDepth == selectedMonad->depth))
+            case RESULT_NONE:
+                break;
+            case RESULT_CLICK:
+                selectedMonad = mainResult.resultMonad;
+                selectedLink = mainResult.resultLink;
+                printf("Object %p, Link %p\n", selectedMonad, selectedLink);
+                break;
+            case RESULT_RCLICK:
+                if (selectedMonad)
                 {
-                    if (SameCategory(selectedMonad, mainResult.resultMonad))
-                        selectedLink = AddLink(selectedMonad, mainResult.resultMonad, mainResult.resultContainerMonad);
-                    else
-                        selectedLink = AddLink(mainResult.resultMonad, selectedMonad, mainResult.resultContainerMonad);
-                    if (selectedLink)
+                    if (mainResult.resultMonad && mainResult.resultContainerMonad && (mainResult.resultDepth == selectedMonad->depth))
                     {
-                        strcpy(monadLog, "Added link [");
-                        strcat(monadLog, selectedLink->startMonad->name);
-                        strcat(monadLog, "] to [");
-                        strcat(monadLog, selectedLink->endMonad->name);
-                        strcat(monadLog, "].");
+                        if (SameCategory(selectedMonad, mainResult.resultMonad))
+                            selectedLink = AddLink(selectedMonad, mainResult.resultMonad, mainResult.resultContainerMonad);
+                        else
+                            selectedLink = AddLink(mainResult.resultMonad, selectedMonad, mainResult.resultContainerMonad);
+                        if (selectedLink)
+                        {
+                            strcpy(monadLog, "Added link [");
+                            strcat(monadLog, selectedLink->startMonad->name);
+                            strcat(monadLog, "] to [");
+                            strcat(monadLog, selectedLink->endMonad->name);
+                            strcat(monadLog, "].");
+                        }
+                        selectedMonad = mainResult.resultMonad;
+                        selectedLink = NULL;
                     }
-                    selectedMonad = mainResult.resultMonad;
-                    selectedLink = NULL;
+                    else if (selectedDepth == selectedMonad->depth)
+                    {
+                        if (!mainResult.resultMonad && Vector2Distance(selectedMonad->avgCenter, mouseV2) >= 30.0f /*deny if too close to container.*/)
+                        {
+                            strcpy(monadLog, "Added object [");
+                            strcat(monadLog, AddMonad(mouseV2, selectedMonad)->name);
+                            strcat(monadLog, "].");
+                        }
+                        else if (selectedLink && (selectedLink->startMonad->depth == mainResult.resultMonad->depth))
+                        {
+                            strcpy(monadLog, "Changed link end object to [");
+                            strcat(monadLog, (selectedLink->endMonad = mainResult.resultMonad)->name);
+                            strcat(monadLog, "].");
+                        }
+                    }
                 }
-                else if (selectedDepth == selectedMonad->depth)
-                {
-                    if (!mainResult.resultMonad && Vector2Distance(selectedMonad->avgCenter, mouseV2) >= 30.0f /*deny if too close to container.*/)
-                    {
-                        strcpy(monadLog, "Added object [");
-                        strcat(monadLog, AddMonad(mouseV2, selectedMonad)->name);
-                        strcat(monadLog, "].");
-                    }
-                    else if (selectedLink && (selectedLink->startMonad->depth == mainResult.resultMonad->depth))
-                    {
-                        strcpy(monadLog, "Changed link end object to [");
-                        strcat(monadLog, (selectedLink->endMonad = mainResult.resultMonad)->name);
-                        strcat(monadLog, "].");
-                    }
-                }
-            }
-            break;
+                break;
         }
 
         if (selectedMonad && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && (selectDrag || Vector2Distance(selectedMonad->avgCenter, mouseV2) <= 30.0f))
@@ -1089,9 +1161,7 @@ int main(void)
 
     // De-Initialization
     //--------------------------------------------------------------------------------------
-
     RemoveSubMonadsRecursive(GodMonad); // Free every object and link from memory.
-
     CloseWindow();        // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
 
