@@ -68,7 +68,7 @@ typedef struct Monad
     struct Link* rootSubLink;
     float radius;
     int depth;
-    int deleteFrame;
+    char deleteFrame;
 }  Monad;
 
 typedef struct Link
@@ -92,7 +92,8 @@ typedef struct ActiveResult
     struct Monad* resultMonad;
     struct Monad* resultContainerMonad;
     struct Link* resultLink;
-    int resultKey, resultDepth;
+    int resultDepth;
+    char resultKey;
 } ActiveResult;
 
 #define SCREENMARGIN 20
@@ -467,7 +468,7 @@ enum discardAppend
     DISCARD_BOTH
 };
 
-char* AppendMallocDiscard(char* str1, char* str2, int discardLevel)
+char* AppendMallocDiscard(char* str1, char* str2, char discardLevel)
 {
     char* new_str = NULL;
     if ((new_str = malloc(strlen(str1)+strlen(str2)+1)))
@@ -705,8 +706,8 @@ char* InterpretAddMonadsRecursive(Monad* selectedMonad , const char* in)
     char* progress = (char*)in + 1; //adding 1 assuming it's coming right after a '['.
     char* payload = malloc(1);
     payload[0] = '\0';
-    char step = NAME;
     int subCount = 0;
+    char step = NAME;
     while (*progress != '\0')
     {
         switch(*progress)
