@@ -96,7 +96,7 @@ typedef struct ActiveResult
     char resultKey;
 } ActiveResult;
 
-#define SCREENMARGIN 20
+#define SCREENMARGIN 50
 
 bool IsVector2OnScreen(Vector2 pos)
 {
@@ -313,14 +313,39 @@ bool RemoveLink(Link* linkPtr, Monad* containingMonadPtr)
     return false;
 }
 
+//Draws dual beziers, and returns the midpoint.
+Vector2 DrawDualingBeziers(Vector2 startV2 , Vector2 endV2 , Color colorCode , Color colorCode2 , float thick1 , float thick2)
+{
+    Vector2 midPoint = Vector2Lerp(startV2, endV2, MONAD_LINK_MIDDLE_LERP);
+    float zeroDistance = startV2.x - endV2.x;
+    if (zeroDistance > 0.0 && zeroDistance <= 30.0f)
+    {
+        midPoint.x += 30.0f - zeroDistance;
+    }
+    else if (zeroDistance <= 0.0 && zeroDistance >= -30.0f)
+    {
+        midPoint.x -= 30.0f + zeroDistance;
+    }
+    zeroDistance = startV2.y - endV2.y;
+    if (zeroDistance > 0.0 && zeroDistance <= 30.0f)
+    {
+        midPoint.y += 30.0f - zeroDistance;
+    }
+    else if (zeroDistance <= 0.0 && zeroDistance >= -30.0f)
+    {
+        midPoint.y -= 30.0f + zeroDistance;
+    }
+    DrawLineBezier(startV2, midPoint, thick1, colorCode);
+    DrawLineBezier(midPoint, endV2, thick2, colorCode2);
+    return midPoint;
+}
+
 #define OUTSCOPED functionDepth > selectedDepth + 1
 #define SUBSCOPE functionDepth == selectedDepth + 1
 #define INSCOPE functionDepth == selectedDepth
 #define PRESCOPE functionDepth < selectedDepth
 
 //Renders all Monads and Link. Returns activated Monad, it's container, if any and the depth. MonadPtr must not be null.
-//TODO: Every recursive call adds all of the instructions of the function to RAM again. Which parts of this function can be separated into its own function so they don't get loaded in every time?
-//Or maybe... the compiler catches it already.
 struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int selectedDepth)
 {
     //check collision with mouse, generate first part of activeResult.
@@ -341,18 +366,21 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int select
         {
             if (INSCOPE)
             {
+                Vector2 startV2 = iterator->startMonad->avgCenter;
                 bool linkHit = false;
                 if (iterator->startMonad == iterator->endMonad)
                 {
-                    linkHit = CheckCollisionPointCircle(GetMousePosition(), Vector2Add(iterator->startMonad->avgCenter, (Vector2) { 15.0f, 15.0f }), 30.0f);
-                    DrawRectangleV(iterator->startMonad->avgCenter, (Vector2) { 10.0f, 10.0f }, (linkHit) ? RED : BLACK);
+                    linkHit = CheckCollisionPointCircle(GetMousePosition(), Vector2Add(startV2, (Vector2) { 15.0f, 15.0f }), 30.0f);
+                    DrawRectangleV(startV2, (Vector2) { 10.0f, 10.0f }, (linkHit) ? RED : BLACK);
                 }
                 else
                 {
-                    Vector2 midPoint = Vector2Lerp(iterator->startMonad->avgCenter, iterator->endMonad->avgCenter, MONAD_LINK_MIDDLE_LERP);
-                    linkHit = CheckCollisionPointCircle(GetMousePosition(), midPoint, 30.0f);
-                    DrawLineBezier(iterator->startMonad->avgCenter, midPoint, 2.0f, (linkHit) ? PURPLE : BLUE);
-                    DrawLineBezier(midPoint, iterator->endMonad->avgCenter, 1.0f, (SameCategory(iterator->endMonad, iterator->startMonad)) ? BLACK : RED);
+                    Vector2 midPoint = DrawDualingBeziers(startV2 , iterator->endMonad->avgCenter , BLUE , SameCategory(iterator->endMonad, iterator->startMonad) ? BLACK : RED , 2.0f , 1.0f);
+                    linkHit = CheckCollisionPointCircle(GetMousePosition() , midPoint , 30.0f);
+                    if (linkHit)
+                    {
+                        DrawLineBezier(startV2, midPoint, 2.2f, PURPLE);
+                    }
                 }
                 if (linkHit)
                 {
@@ -441,7 +469,6 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int select
 
     if (INSCOPE)
     {
-        //DrawCircleLinesV(MonadPtr->avgCenter , MonadPtr->radius , GREEN);
         DrawPoly(MonadPtr->avgCenter, 3, 5.0f, 0, PURPLE);
         DrawText(MonadPtr->name, (int)MonadPtr->avgCenter.x + 10, (int)MonadPtr->avgCenter.y + 10, 24, Fade(PURPLE, 0.5f));
     }
@@ -463,9 +490,9 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int select
 
 enum discardAppend
 {
-    DISCARD_NONE,
-    DISCARD_FIRST,// use when str2 is not a malloc'd char array.
-    DISCARD_BOTH
+    DISCARD_NONE, // Neither are malloc'd.
+    DISCARD_FIRST, // Use when str2 is not a malloc'd char array.
+    DISCARD_BOTH // Both are malloc'd.
 };
 
 char* AppendMallocDiscard(char* str1, char* str2, char discardLevel)
@@ -1077,8 +1104,9 @@ int main(void)
         if (selectedMonad)
         {
             int determineMode = selectedMonad->depth - selectedDepth;
-            DrawText((!determineMode) ? "Adding" : (determineMode == 1) ? "Linking" : "Edit Only", 32, 32, 20, SKYBLUE);
+            DrawText((!determineMode) ? "Adding" : (determineMode == 1) ? "Linking" : "Editing Name Only", 32, 32, 20, SKYBLUE);
             DrawPoly(selectedMonad->avgCenter, 3, 10.0f, 0, Fade(RED, 0.5f));
+            DrawText(selectedMonad->name, (int)selectedMonad->avgCenter.x + 10, (int)selectedMonad->avgCenter.y + 10, selectedDepth < selectedMonad->depth ? 16 : 24, Fade(ORANGE, 0.5f));
         }
         else
         {
@@ -1088,10 +1116,16 @@ int main(void)
         if (selectedLink)
         {
             DrawText("Edit Link", 32, 64, 20, PURPLE);
-            Vector2 midPoint = Vector2Lerp(selectedLink->startMonad->avgCenter, selectedLink->endMonad->avgCenter, MONAD_LINK_MIDDLE_LERP);
-            DrawLineBezier(selectedLink->startMonad->avgCenter, midPoint, 4.0f, Fade(RED, 0.5f));
-            DrawLineBezier(midPoint, selectedLink->endMonad->avgCenter, 2.0f, Fade((SameCategory(selectedLink->endMonad, selectedLink->startMonad)) ? RED : PURPLE, 0.5f));
-            DrawRectangleV(midPoint, (Vector2) { 25.0f, 25.0f }, Fade(RED, 0.5f));
+            Vector2 linkLocation;
+            if (selectedLink->startMonad == selectedLink->endMonad)
+            {
+                linkLocation = selectedLink->startMonad->avgCenter;
+            }
+            else
+            {
+                linkLocation = DrawDualingBeziers(selectedLink->startMonad->avgCenter , selectedLink->endMonad->avgCenter , Fade(RED, 0.5f) , Fade(SameCategory(selectedLink->endMonad, selectedLink->startMonad) ? RED : PURPLE, 0.5f) , 3.5 , 1.5f);
+            }
+            DrawRectangleV(linkLocation , (Vector2){25.0f, 25.0f} , Fade(RED, 0.5f));
         }
 
         for (int m = 1, d = 1; m <= selectedDepth; m *= 10, d++)
