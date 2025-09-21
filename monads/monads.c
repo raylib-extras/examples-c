@@ -67,7 +67,7 @@ typedef struct Monad
     struct Monad* prev;
     struct Monad* next;
     struct Link* rootSubLink;
-    int depth;
+    unsigned int depth;
     char deleteFrame;
 }  Monad;
 
@@ -92,7 +92,7 @@ typedef struct ActiveResult
     struct Monad* resultMonad;
     struct Monad* resultContainerMonad;
     struct Link* resultLink;
-    int resultDepth;
+    unsigned int resultDepth;
     char resultKey;
 } ActiveResult;
 
@@ -106,6 +106,12 @@ bool IsVector2OnScreen(Vector2 pos)
 // Adds an object (subMonad) to ContainingMonadPtr. ContainingMonadPtr must not be null.
 struct Monad* AddMonad(Vector2 canvasPosition, Monad* containingMonadPtr)
 {
+    if (containingMonadPtr->depth >= UINT_MAX) // return container if the depth is beyond UINT max.
+    {
+        containingMonadPtr->position = canvasPosition;
+        return containingMonadPtr;
+    }
+
     //malloc and initialize new Monad. Always initialize variables that are not being overwritten.
     Monad* newMonadPtr = (Monad*)malloc(sizeof(Monad));
     memset(newMonadPtr, 0, sizeof(Monad));
@@ -336,7 +342,7 @@ Vector2 DrawDualingBeziers(Vector2 startV2 , Vector2 endV2 , Color colorCode , C
 #define PRESCOPE functionDepth < selectedDepth
 
 //Renders all Monads and Link. Returns activated Monad, it's container, if any and the depth. MonadPtr must not be null.
-struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int selectedDepth)
+struct ActiveResult RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, unsigned int selectedDepth)
 {
     //check collision with mouse, generate first part of activeResult.
     ActiveResult activeResult = (ActiveResult){ 0 };
@@ -519,7 +525,7 @@ char* AppendMallocDiscard(char* str1, char* str2, char discardLevel)
 
 #define _FORBIDDEN "[]:;?>\0\r\n"
 
-char* GenerateIDMalloc(int index) //sub monads limited by the highest int, really high.
+char* GenerateIDMalloc(unsigned int index) //sub monads limited by the highest int, really high.
 {
     index++;//so it isn't 0
     char* forbiddenChars = _FORBIDDEN;
@@ -577,11 +583,10 @@ typedef struct DepthResult
     Monad* containerMonad;
     Monad* cousinMonad;
     Monad* sharedMonad; //highest point where both container and cousin can be both traced to.
-    int depth;
-    int sharedDepth;
-
+    unsigned int depth;
+    unsigned int sharedDepth;
 } DepthResult;
-DepthResult FindDepthOfObject(Monad* selectedMonad , Monad* findMonad , Monad* findCousinMonad , int Depth)
+DepthResult FindDepthOfObject(Monad* selectedMonad , Monad* findMonad , Monad* findCousinMonad , unsigned int Depth)
 {
     if (selectedMonad == findMonad)
     {
@@ -630,7 +635,7 @@ char* ChainCarrotAfterJumpStringRecursiveMalloc(Monad* sharedMonad , Monad* endM
     char* ret = AppendMallocDiscard("","",DISCARD_NONE); // must malloc.
     if (matchingIterator)
     {
-        int index = 0;
+        unsigned int index = 0;
         do
         {
             if (matchingIterator == endMonad)
@@ -686,8 +691,8 @@ void PrintMonadsRecursive(Monad* MonadPtr, Monad* OriginalMonad, char** outRef)
             DepthResult depthResult = FindDepthOfObject(OriginalMonad , iterator->startMonad , iterator->endMonad , 0);
             if (depthResult.sharedMonad)
             {
-                int jumpBy = depthResult.depth - depthResult.sharedDepth - 1;
-                int subIndex = 0;
+                unsigned int jumpBy = depthResult.depth - depthResult.sharedDepth - 1;
+                unsigned int subIndex = 0;
                 printf("DR container:%p cousin:%p shared:%p depth: %i shared depth: %i\n", depthResult.containerMonad , depthResult.cousinMonad , depthResult.sharedMonad , depthResult.depth , depthResult.sharedDepth);    
                 printf("%p->%p needs a jump by: %i\n" , iterator->startMonad , iterator->endMonad , jumpBy);
                 Monad* matchingIterator = rootMonadPtr;
@@ -730,7 +735,7 @@ char* InterpretAddMonadsRecursive(Monad* selectedMonad , const char* in)
     char* progress = (char*)in + 1; //adding 1 assuming it's coming right after a '['.
     char* payload = malloc(1);
     payload[0] = '\0';
-    int subCount = 0;
+    unsigned int subCount = 0;
     char step = NAME;
     while (*progress != '\0')
     {
@@ -817,7 +822,7 @@ char* InterpretLinksRecursive(Monad* selectedMonad , ParentedMonad parentInfo , 
             case ';':
                 findEnderIterator = findEnderIterator->rootSubMonads;
                 Monad* rootEnderIterator = findEnderIterator;
-                int endIndex = 0;
+                unsigned int endIndex = 0;
                 do
                 {
                     if (!strcmp(GenerateIDMalloc(endIndex) , payload))
@@ -842,7 +847,7 @@ char* InterpretLinksRecursive(Monad* selectedMonad , ParentedMonad parentInfo , 
                 {
                     case 0:
                         findStartIterator = rootMonadPtr;
-                        int startIndex = 0;
+                        unsigned int startIndex = 0;
                         do
                         {
                             if (!strcmp(GenerateIDMalloc(startIndex) , payload))
@@ -857,7 +862,7 @@ char* InterpretLinksRecursive(Monad* selectedMonad , ParentedMonad parentInfo , 
                     case 1://jump
                         findEnderIterator = selectedMonad;
                         ParentedMonad* currentChain = &parentInfo;
-                        int jumpIndex = 0;
+                        unsigned int jumpIndex = 0;
                         while (currentChain && strcmp(GenerateIDMalloc(jumpIndex) , payload)) 
                         {
                             findEnderIterator = currentChain->monad;
@@ -869,7 +874,7 @@ char* InterpretLinksRecursive(Monad* selectedMonad , ParentedMonad parentInfo , 
                     case 2:
                         findEnderIterator = findEnderIterator->rootSubMonads;
                         Monad* rootEnderIterator = findEnderIterator;
-                        int endIndex = 0;
+                        unsigned int endIndex = 0;
                         do
                         {
                             if (!strcmp(GenerateIDMalloc(endIndex) , payload))
@@ -948,7 +953,7 @@ int main(void)
     char monadLog[MAX_MONAD_NAME_SIZE * 3] = "Session started.";
     Monad* selectedMonad = NULL;
     Link* selectedLink = NULL;
-    int selectedDepth = 0;
+    unsigned int selectedDepth = 0;
     ActiveResult mainResult = (ActiveResult){ 0 };
     bool selectDrag = false;
 
@@ -1162,7 +1167,7 @@ int main(void)
             DrawLineV(endV2, Vector2Add(endNextV2, Vector2Scale(Vector2Subtract(endV2, endNextV2), 0.9f)), ORANGE);
         }
 
-        for (int m = 1, d = 1; m <= selectedDepth; m *= 10, d++)
+        for (unsigned int m = 1, d = 1; m <= selectedDepth; m *= 10, d++)
         {
             char digit[2] = { '0' + (selectedDepth / m) % 10 ,  0 };
             DrawText(digit, screenWidth - 32 * d, 64, 20, SKYBLUE);
@@ -1220,9 +1225,7 @@ int main(void)
         if (selectedMonad && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && (selectDrag || Vector2Distance(selectedMonad->position, mouseV2) <= 30.0f))
         {
             if (IsVector2OnScreen(mouseV2))
-            {
                 selectedMonad->position = mouseV2;
-            }
             selectDrag = true;
         }
         else
@@ -1233,9 +1236,10 @@ int main(void)
         float mouseMove = GetMouseWheelMove();
         if (mouseMove != 0)
         {
-            selectedDepth += (mouseMove > 0) ? 1 : -1;
-            if (selectedDepth < 0)
+            if (!selectedDepth && mouseMove <= 0.0f)
                 selectedDepth = 0;
+            else
+                selectedDepth += (mouseMove > 0.0f) ? 1 : -1;
         }
     }
 
