@@ -62,7 +62,7 @@ enum
 typedef struct Monad
 {
     char name[MAX_MONAD_NAME_SIZE];
-    Vector2 avgCenter;
+    Vector2 position;
     struct Monad* rootSubMonads;
     struct Monad* prev;
     struct Monad* next;
@@ -110,7 +110,7 @@ struct Monad* AddMonad(Vector2 canvasPosition, Monad* containingMonadPtr)
     Monad* newMonadPtr = (Monad*)malloc(sizeof(Monad));
     memset(newMonadPtr, 0, sizeof(Monad));
 
-    newMonadPtr->avgCenter = canvasPosition;
+    newMonadPtr->position = canvasPosition;
     newMonadPtr->rootSubMonads = NULL;
     newMonadPtr->rootSubLink = NULL;
     newMonadPtr->depth = containingMonadPtr->depth + 1;
@@ -147,7 +147,7 @@ struct Monad* AddMonad(Vector2 canvasPosition, Monad* containingMonadPtr)
     }
 
     //move containing Monad
-    containingMonadPtr->avgCenter = Vector2Scale(Vector2Add(containingMonadPtr->avgCenter, canvasPosition), 0.5f);
+    containingMonadPtr->position = Vector2Scale(Vector2Add(containingMonadPtr->position, canvasPosition), 0.5f);
 
     return newMonadPtr;
 }
@@ -342,7 +342,7 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int select
     ActiveResult activeResult = (ActiveResult){ 0 };
     activeResult.resultKey = (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) ? RESULT_CLICK : ((IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) ? RESULT_RCLICK : RESULT_NONE);
     activeResult.resultDepth = functionDepth;
-    if ((functionDepth >= selectedDepth) && CheckCollisionPointCircle(GetMousePosition(), MonadPtr->avgCenter, 30.0f))
+    if ((functionDepth >= selectedDepth) && CheckCollisionPointCircle(GetMousePosition(), MonadPtr->position, 30.0f))
     {
         activeResult.resultMonad = MonadPtr;
     }
@@ -356,7 +356,7 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int select
         {
             if (INSCOPE)
             {
-                Vector2 startV2 = iterator->startMonad->avgCenter;
+                Vector2 startV2 = iterator->startMonad->position;
                 bool linkHit = false;
                 if (iterator->startMonad == iterator->endMonad)
                 {
@@ -366,7 +366,7 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int select
                 else
                 {
                     float giantUpLerp = fmaxf(0.3f , fminf(800.0f , Vector2Distance(startV2 , GetMousePosition())) / 800.0f);
-                    Vector2 midPoint = DrawDualingBeziers(startV2 , iterator->endMonad->avgCenter , BLUE , SameCategory(iterator->endMonad, iterator->startMonad) ? BLACK : RED , 2.0f/giantUpLerp , 1.0f/giantUpLerp);
+                    Vector2 midPoint = DrawDualingBeziers(startV2 , iterator->endMonad->position , BLUE , SameCategory(iterator->endMonad, iterator->startMonad) ? BLACK : RED , 2.0f/giantUpLerp , 1.0f/giantUpLerp);
                     linkHit = CheckCollisionPointCircle(GetMousePosition() , midPoint , 30.0f);
                     if (linkHit)
                     {
@@ -411,14 +411,14 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int select
                 }
                 else
                 {
-                    DrawLineV(MonadPtr->avgCenter, iterator->avgCenter, RED); // something went wrong if still shows.
+                    DrawLineV(MonadPtr->position, iterator->position, RED); // something went wrong if still shows.
                 }
                 iterator = next;
                 continue;
             }
             else if (INSCOPE)
             {
-                DrawLineV(MonadPtr->avgCenter, iterator->avgCenter, VIOLET);
+                DrawLineV(MonadPtr->position, iterator->position, VIOLET);
             }
 
             //--------------------------------
@@ -435,7 +435,7 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int select
                 activeResult.resultMonad = MonadPtr;
             }
 
-            float newdomainRadius = Vector2Distance(MonadPtr->avgCenter , iterator->avgCenter);
+            float newdomainRadius = Vector2Distance(MonadPtr->position , iterator->position);
             if (newdomainRadius > domainRadius)
             {
                 domainRadius = newdomainRadius;
@@ -466,21 +466,21 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int select
 
     if (INSCOPE)
     {
-        DrawPoly(MonadPtr->avgCenter, 3, 5.0f, 0, PURPLE);
-        DrawText(MonadPtr->name, (int)MonadPtr->avgCenter.x + 10, (int)MonadPtr->avgCenter.y + 10, 24, Fade(PURPLE, 0.5f));
+        DrawPoly(MonadPtr->position, 3, 5.0f, 0, PURPLE);
+        DrawText(MonadPtr->name, (int)MonadPtr->position.x + 10, (int)MonadPtr->position.y + 10, 24, Fade(PURPLE, 0.5f));
     }
     else if (PRESCOPE)
     {
-        DrawCircleLinesV(MonadPtr->avgCenter, domainRadius , Fade(GRAY, (float)functionDepth / (float)selectedDepth));
+        DrawCircleLinesV(MonadPtr->position, domainRadius , Fade(GRAY, (float)functionDepth / (float)selectedDepth));
     }
     else if (SUBSCOPE)
     {
-        DrawCircleV(MonadPtr->avgCenter, 5.0f, BLUE);
-        DrawText(MonadPtr->name, (int)MonadPtr->avgCenter.x + 10, (int)MonadPtr->avgCenter.y + 10, 16, Fade(SKYBLUE, 0.5f));
+        DrawCircleV(MonadPtr->position, 5.0f, BLUE);
+        DrawText(MonadPtr->name, (int)MonadPtr->position.x + 10, (int)MonadPtr->position.y + 10, 16, Fade(SKYBLUE, 0.5f));
     }
 
     if (activeResult.resultMonad == MonadPtr)
-        DrawCircleLinesV(MonadPtr->avgCenter, 20.0f, ORANGE);
+        DrawCircleLinesV(MonadPtr->position, 20.0f, ORANGE);
 
     return activeResult;
 }
@@ -737,7 +737,7 @@ char* InterpretAddMonadsRecursive(Monad* selectedMonad , const char* in)
         switch(*progress)
         {
             case '[':
-                Vector2 oriV2 = selectedMonad->avgCenter;
+                Vector2 oriV2 = selectedMonad->position;
                 Vector2 newV2 = (Vector2){oriV2.x + subCount*(oriV2.x < GetScreenWidth()/2 ? 60.1f : -60.1f) + 60.0f , oriV2.y + subCount*(oriV2.y < GetScreenHeight()/2 ? 60.0f : -60.0f)};
                 if(!IsVector2OnScreen(newV2))
                 {
@@ -898,8 +898,8 @@ char* InterpretLinksRecursive(Monad* selectedMonad , ParentedMonad parentInfo , 
 
 void ScreenResizeSyncRecursive(Monad* monad , float ratioX , float ratioY)
 {
-    monad->avgCenter.x *= ratioX;
-    monad->avgCenter.y *= ratioY;
+    monad->position.x *= ratioX;
+    monad->position.y *= ratioY;
     Monad* rootMonad = monad->rootSubMonads;
     if (rootMonad)
     {
@@ -938,8 +938,8 @@ int main(void)
     Monad* GodMonad = malloc(sizeof(Monad));
     memset(GodMonad, 0, sizeof(Monad));
 
-    GodMonad->avgCenter.x = screenWidth / 2.0f;
-    GodMonad->avgCenter.y = screenHeight / 2.0f;
+    GodMonad->position.x = screenWidth / 2.0f;
+    GodMonad->position.y = screenHeight / 2.0f;
     GodMonad->prev = GodMonad;
     GodMonad->next = GodMonad;
     strcpy(GodMonad->name, "Monad 0");
@@ -1017,7 +1017,7 @@ int main(void)
             {
                 if (selectedLink && IsKeyPressed(KEY_A))
                 {
-                    strcpy(monadLog, "Link endpoint changed from [");
+                    strcpy(monadLog, "Link end object cycled from [");
                     strcat(monadLog, selectedLink->endMonad->name);
                     strcat(monadLog, "] to [");
                     selectedLink->endMonad = selectedLink->endMonad->next;
@@ -1065,7 +1065,7 @@ int main(void)
                     InterpretAddMonadsRecursive(pastedOverMonad , GetClipboardText());
                     InterpretLinksRecursive(pastedOverMonad , (ParentedMonad){NULL , NULL} , GetClipboardText());
                     selectedMonad = pastedOverMonad;
-                    pastedOverMonad->avgCenter = mouseV2;
+                    pastedOverMonad->position = mouseV2;
                     strcpy(monadLog, "Pasted text data in [");
                     strcat(monadLog, selectedMonad->name);
                     strcat(monadLog, "] from clipboard.");   
@@ -1134,8 +1134,8 @@ int main(void)
         {
             int determineMode = selectedMonad->depth - selectedDepth;
             DrawText((!determineMode) ? "Adding" : (determineMode == 1) ? "Linking" : "Edit Only", 32, 32, 20, SKYBLUE);
-            DrawPoly(selectedMonad->avgCenter, 3, 10.0f, 0, Fade(RED, 0.5f));
-            DrawText(selectedMonad->name, (int)selectedMonad->avgCenter.x + 10, (int)selectedMonad->avgCenter.y + 10, selectedDepth < selectedMonad->depth ? 16 : 24, Fade(ORANGE, 0.5f));
+            DrawPoly(selectedMonad->position, 3, 10.0f, 0, Fade(RED, 0.5f));
+            DrawText(selectedMonad->name, (int)selectedMonad->position.x + 10, (int)selectedMonad->position.y + 10, selectedDepth < selectedMonad->depth ? 16 : 24, Fade(ORANGE, 0.5f));
         }
         else
         {
@@ -1146,15 +1146,15 @@ int main(void)
         {
             DrawText("Edit Link", 32, 64, 20, PURPLE);
             Vector2 linkLocation;
-            Vector2 endV2 = selectedLink->endMonad->avgCenter;
-            Vector2 endNextV2 = selectedLink->endMonad->next->avgCenter;
+            Vector2 endV2 = selectedLink->endMonad->position;
+            Vector2 endNextV2 = selectedLink->endMonad->next->position;
             if (selectedLink->startMonad == selectedLink->endMonad)
             {
-                linkLocation = selectedLink->startMonad->avgCenter;
+                linkLocation = selectedLink->startMonad->position;
             }
             else
             {
-                linkLocation = DrawDualingBeziers(selectedLink->startMonad->avgCenter , selectedLink->endMonad->avgCenter , Fade(RED, 0.5f) , Fade(SameCategory(selectedLink->endMonad, selectedLink->startMonad) ? RED : PURPLE, 0.5f) , 3.5 , 1.5f);
+                linkLocation = DrawDualingBeziers(selectedLink->startMonad->position , selectedLink->endMonad->position , Fade(RED, 0.5f) , Fade(SameCategory(selectedLink->endMonad, selectedLink->startMonad) ? RED : PURPLE, 0.5f) , 3.5 , 1.5f);
             }
             linkLocation.x -= 12.0f;
             linkLocation.y -= 12.0f;
@@ -1200,7 +1200,7 @@ int main(void)
                     }
                     else if (selectedDepth == selectedMonad->depth)
                     {
-                        if (!mainResult.resultMonad && Vector2Distance(selectedMonad->avgCenter, mouseV2) >= 30.0f /*deny if too close to container.*/)
+                        if (!mainResult.resultMonad && Vector2Distance(selectedMonad->position, mouseV2) >= 30.0f /*deny if too close to container.*/)
                         {
                             strcpy(monadLog, "Added object [");
                             strcat(monadLog, AddMonad(mouseV2, selectedMonad)->name);
@@ -1217,11 +1217,11 @@ int main(void)
                 break;
         }
 
-        if (selectedMonad && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && (selectDrag || Vector2Distance(selectedMonad->avgCenter, mouseV2) <= 30.0f))
+        if (selectedMonad && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && (selectDrag || Vector2Distance(selectedMonad->position, mouseV2) <= 30.0f))
         {
             if (IsVector2OnScreen(mouseV2))
             {
-                selectedMonad->avgCenter = mouseV2;
+                selectedMonad->position = mouseV2;
             }
             selectDrag = true;
         }
