@@ -67,7 +67,6 @@ typedef struct Monad
     struct Monad* prev;
     struct Monad* next;
     struct Link* rootSubLink;
-    float radius;
     int depth;
     char deleteFrame;
 }  Monad;
@@ -114,7 +113,6 @@ struct Monad* AddMonad(Vector2 canvasPosition, Monad* containingMonadPtr)
     newMonadPtr->avgCenter = canvasPosition;
     newMonadPtr->rootSubMonads = NULL;
     newMonadPtr->rootSubLink = NULL;
-    newMonadPtr->radius = 10.0f;
     newMonadPtr->depth = containingMonadPtr->depth + 1;
     newMonadPtr->deleteFrame = DELETE_OFF;
     newMonadPtr->name[0] = (containingMonadPtr->rootSubMonads) ? containingMonadPtr->rootSubMonads->prev->name[0] + 1 : 'A';
@@ -148,12 +146,7 @@ struct Monad* AddMonad(Vector2 canvasPosition, Monad* containingMonadPtr)
         rootPtr->prev = newMonadPtr;
     }
 
-    //containing Monad data
-    float prospectDistance = Vector2Distance(containingMonadPtr->avgCenter, canvasPosition) * 1.5f;
-    if (prospectDistance > containingMonadPtr->radius)
-    {
-        containingMonadPtr->radius = prospectDistance;
-    }
+    //move containing Monad
     containingMonadPtr->avgCenter = Vector2Scale(Vector2Add(containingMonadPtr->avgCenter, canvasPosition), 0.5f);
 
     return newMonadPtr;
@@ -402,6 +395,7 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int select
 
     //iterate through the objects with this object treated as a category.
     Monad* rootMonadPtr = MonadPtr->rootSubMonads;
+    float domainRadius = 0.0f;
     if (rootMonadPtr)
     {
         Monad* iterator = rootMonadPtr;
@@ -441,6 +435,12 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int select
                 activeResult.resultMonad = MonadPtr;
             }
 
+            float newdomainRadius = Vector2Distance(MonadPtr->avgCenter , iterator->avgCenter);
+            if (newdomainRadius > domainRadius)
+            {
+                domainRadius = newdomainRadius;
+            }
+
             iterator = next;
         } while (iterator != rootMonadPtr);
     }
@@ -471,7 +471,7 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, int functionDepth, int select
     }
     else if (PRESCOPE)
     {
-        DrawCircleLinesV(MonadPtr->avgCenter, MonadPtr->radius, Fade(GRAY, (float)functionDepth / (float)selectedDepth));
+        DrawCircleLinesV(MonadPtr->avgCenter, domainRadius , Fade(GRAY, (float)functionDepth / (float)selectedDepth));
     }
     else if (SUBSCOPE)
     {
