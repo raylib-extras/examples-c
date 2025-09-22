@@ -35,6 +35,8 @@ The following commands need a control key held down to function:
 -Key 'C' will copy the selected object and recursively for its sub-objects as text data into your clipboard.
 -Key 'V' will paste the text data recursively as a new object contained by the selected object.
 -Key 'A' will advance the selected link's end object to its neighboring one in its stead.
+Holding a shift key will always select the object you right clicked, and if you added the object it will move you down to it's depth.
+If you hold a shift key while left clicking an object, you will go to its depth.
 */
 
 #include "raylib.h"
@@ -67,7 +69,6 @@ typedef struct Monad
     struct Monad* prev;
     struct Monad* next;
     struct Link* rootSubLink;
-    unsigned int depth;
     char deleteFrame;
 }  Monad;
 
@@ -106,12 +107,6 @@ bool IsVector2OnScreen(Vector2 pos)
 // Adds an object (subMonad) to ContainingMonadPtr. ContainingMonadPtr must not be null.
 struct Monad* AddMonad(Vector2 canvasPosition, Monad* containingMonadPtr)
 {
-    if (containingMonadPtr->depth >= UINT_MAX) // return container if the depth is beyond UINT max.
-    {
-        containingMonadPtr->position = canvasPosition;
-        return containingMonadPtr;
-    }
-
     //malloc and initialize new Monad. Always initialize variables that are not being overwritten.
     Monad* newMonadPtr = (Monad*)malloc(sizeof(Monad));
     memset(newMonadPtr, 0, sizeof(Monad));
@@ -119,7 +114,6 @@ struct Monad* AddMonad(Vector2 canvasPosition, Monad* containingMonadPtr)
     newMonadPtr->position = canvasPosition;
     newMonadPtr->rootSubMonads = NULL;
     newMonadPtr->rootSubLink = NULL;
-    newMonadPtr->depth = containingMonadPtr->depth + 1;
     newMonadPtr->deleteFrame = DELETE_OFF;
     newMonadPtr->name[0] = (containingMonadPtr->rootSubMonads) ? containingMonadPtr->rootSubMonads->prev->name[0] + 1 : 'A';
     newMonadPtr->name[1] = 0;
@@ -243,12 +237,12 @@ struct Link* AddLink(Monad* start, Monad* end, Monad* containingMonadPtr)
         {
             if ((iterator->startMonad == start) && (iterator->endMonad == end))
             {
-                printf("Link already exists.\n");
-                return iterator;
+                return NULL;
             }
             iterator = iterator->next;
         } while (iterator != rootPtr);
     }
+
     //malloc and initialize new Link. Always initialize variables that are not being overwritten.
     Link* newLinkPtr = (Link*)malloc(sizeof(Link));
     newLinkPtr->startMonad = start;
@@ -310,7 +304,7 @@ bool RemoveLink(Link* linkPtr, Monad* containingMonadPtr)
 }
 
 //Draws dual beziers, and returns the midpoint.
-Vector2 DrawDualingBeziers(Vector2 startV2 , Vector2 endV2 , Color colorCode , Color colorCode2 , float thick1 , float thick2)
+Vector2 DrawDualBeziers(Vector2 startV2 , Vector2 endV2 , Color colorCode , Color colorCode2 , float thick1 , float thick2)
 {
     Vector2 midPoint = Vector2Lerp(startV2, endV2, MONAD_LINK_MIDDLE_LERP);
     float zeroDistance = startV2.x - endV2.x;
@@ -371,8 +365,8 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, u
                 }
                 else
                 {
-                    float giantUpLerp = fmaxf(0.3f , fminf(800.0f , Vector2Distance(startV2 , GetMousePosition())) / 800.0f);
-                    Vector2 midPoint = DrawDualingBeziers(startV2 , iterator->endMonad->position , BLUE , SameCategory(iterator->endMonad, iterator->startMonad) ? BLACK : RED , 2.0f/giantUpLerp , 1.0f/giantUpLerp);
+                    float giantUpLerp = fmaxf(0.3f , fminf(350.0f , Vector2Distance(startV2 , GetMousePosition())) / 350.0f);
+                    Vector2 midPoint = DrawDualBeziers(startV2 , iterator->endMonad->position , BLUE , SameCategory(iterator->endMonad, iterator->startMonad) ? BLACK : RED , 2.0f/giantUpLerp , 1.0f/giantUpLerp);
                     linkHit = CheckCollisionPointCircle(GetMousePosition() , midPoint , 30.0f);
                     if (linkHit)
                     {
@@ -729,7 +723,6 @@ enum interpretStep
     SUB,
     LINK
 };
-
 char* InterpretAddMonadsRecursive(Monad* selectedMonad , const char* in)
 {
     char* progress = (char*)in + 1; //adding 1 assuming it's coming right after a '['.
@@ -954,6 +947,7 @@ int main(void)
     Monad* selectedMonad = NULL;
     Link* selectedLink = NULL;
     unsigned int selectedDepth = 0;
+    unsigned int selectedMonadDepth = 0;
     ActiveResult mainResult = (ActiveResult){ 0 };
     bool selectDrag = false;
 
@@ -1025,7 +1019,11 @@ int main(void)
                     strcpy(monadLog, "Link end object cycled from [");
                     strcat(monadLog, selectedLink->endMonad->name);
                     strcat(monadLog, "] to [");
-                    selectedLink->endMonad = selectedLink->endMonad->next;
+                    Monad* newStartCycle = selectedLink->startMonad;
+                    Monad* newEndCycle = selectedLink->endMonad->next;
+                    RemoveLink(selectedLink , selectedMonad);
+                    while(!(selectedLink = AddLink(newStartCycle , newEndCycle , selectedMonad)))
+                        newEndCycle = newEndCycle->next;
                     strcat(monadLog, selectedLink->endMonad->name);
                     strcat(monadLog, "].");
                 }
@@ -1137,10 +1135,10 @@ int main(void)
 
         if (selectedMonad)
         {
-            int determineMode = selectedMonad->depth - selectedDepth;
+            int determineMode = selectedMonadDepth - selectedDepth;
             DrawText((!determineMode) ? "Adding" : (determineMode == 1) ? "Linking" : "Edit Only", 32, 32, 20, SKYBLUE);
             DrawPoly(selectedMonad->position, 3, 10.0f, 0, Fade(RED, 0.5f));
-            DrawText(selectedMonad->name, (int)selectedMonad->position.x + 10, (int)selectedMonad->position.y + 10, selectedDepth < selectedMonad->depth ? 16 : 24, Fade(ORANGE, 0.5f));
+            DrawText(selectedMonad->name, (int)selectedMonad->position.x + 10, (int)selectedMonad->position.y + 10, selectedDepth < selectedMonadDepth ? 16 : 24, Fade(ORANGE, 0.5f));
         }
         else
         {
@@ -1159,7 +1157,7 @@ int main(void)
             }
             else
             {
-                linkLocation = DrawDualingBeziers(selectedLink->startMonad->position , selectedLink->endMonad->position , Fade(RED, 0.5f) , Fade(SameCategory(selectedLink->endMonad, selectedLink->startMonad) ? RED : PURPLE, 0.5f) , 3.5 , 1.5f);
+                linkLocation = DrawDualBeziers(selectedLink->startMonad->position , selectedLink->endMonad->position , Fade(RED, 0.5f) , Fade(SameCategory(selectedLink->endMonad, selectedLink->startMonad) ? RED : PURPLE, 0.5f) , 3.5 , 1.5f);
             }
             linkLocation.x -= 12.0f;
             linkLocation.y -= 12.0f;
@@ -1176,17 +1174,23 @@ int main(void)
 
         switch (mainResult.resultKey)
         {
-            case RESULT_NONE:
-                break;
             case RESULT_CLICK:
+                if (selectedMonad == mainResult.resultMonad && (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)))
+                {
+                    if (mainResult.resultDepth > selectedDepth)
+                        selectedDepth++;
+                    else if (selectedDepth && mainResult.resultDepth <= selectedDepth)
+                        selectedDepth--;
+                }
                 selectedMonad = mainResult.resultMonad;
+                selectedMonadDepth = mainResult.resultDepth;
                 selectedLink = mainResult.resultLink;
                 printf("Object %p, Link %p\n", selectedMonad, selectedLink);
-                break;
+            break;
             case RESULT_RCLICK:
                 if (selectedMonad)
                 {
-                    if (mainResult.resultMonad && mainResult.resultContainerMonad && (mainResult.resultDepth == selectedMonad->depth))
+                    if (mainResult.resultMonad && mainResult.resultContainerMonad && (selectedDepth + 1 == selectedMonadDepth))
                     {
                         if (SameCategory(selectedMonad, mainResult.resultMonad))
                             selectedLink = AddLink(selectedMonad, mainResult.resultMonad, mainResult.resultContainerMonad);
@@ -1200,18 +1204,33 @@ int main(void)
                             strcat(monadLog, selectedLink->endMonad->name);
                             strcat(monadLog, "].");
                         }
-                        selectedMonad = mainResult.resultMonad;
+                        else
+                        {
+                            strcpy(monadLog, "Link preexists.");
+                        }
+                        if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))
+                        {
+                            selectedMonad = mainResult.resultMonad;
+                            selectedMonadDepth = mainResult.resultDepth;
+                        }
                         selectedLink = NULL;
                     }
-                    else if (selectedDepth == selectedMonad->depth)
+                    else if (selectedDepth == selectedMonadDepth)
                     {
                         if (!mainResult.resultMonad && Vector2Distance(selectedMonad->position, mouseV2) >= 30.0f /*deny if too close to container.*/)
                         {
                             strcpy(monadLog, "Added object [");
-                            strcat(monadLog, AddMonad(mouseV2, selectedMonad)->name);
+                            Monad* newMonad = AddMonad(mouseV2, selectedMonad);
+                            if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))
+                            {
+                                selectedMonad = newMonad;
+                                selectedMonadDepth++;
+                                selectedLink = NULL;
+                            }
+                            strcat(monadLog, newMonad->name);
                             strcat(monadLog, "].");
                         }
-                        else if (selectedLink && (selectedLink->startMonad->depth == mainResult.resultMonad->depth))
+                        else if (selectedLink)
                         {
                             strcpy(monadLog, "Changed link end object to [");
                             strcat(monadLog, (selectedLink->endMonad = mainResult.resultMonad)->name);
@@ -1219,7 +1238,6 @@ int main(void)
                         }
                     }
                 }
-                break;
         }
 
         if (selectedMonad && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && (selectDrag || Vector2Distance(selectedMonad->position, mouseV2) <= 30.0f))

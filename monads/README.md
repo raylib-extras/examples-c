@@ -17,6 +17,9 @@ The following commands need a control key held down to function:
 - Key 'B' to delete all connections from and to a selected object.
 If you are selecting a link it will delete that instead of an object.
 - Key 'T' will rename the selected object to your clipboard contents.
-- Key 'C' will copy the selected monad's text data recursively to your clipboard.
+- Key 'C' will copy the selected object's text data recursively to your clipboard.
 - Key 'V' will paste the text data recursively as a new object contained by the selected object.
 - Key 'A' will advance the selected link's end object to its neighboring one in its stead.
+
+Holding a shift key will always select the object you right clicked for an operation.
+If you hold a shift key while left clicking an object, you will go to its depth.
