@@ -1230,7 +1230,7 @@ int main(void)
                             strcat(monadLog, newMonad->name);
                             strcat(monadLog, "].");
                         }
-                        else if (selectedLink)
+                        else if (selectedLink && selectedMonadDepth + 1 == mainResult.resultDepth && selectedLink->endMonad != mainResult.resultMonad)
                         {
                             strcpy(monadLog, "Changed link end object to [");
                             strcat(monadLog, (selectedLink->endMonad = mainResult.resultMonad)->name);
