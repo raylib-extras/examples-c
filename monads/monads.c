@@ -395,7 +395,7 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, u
 
     //iterate through the objects with this object treated as a category.
     Monad* rootMonadPtr = MonadPtr->rootSubMonads;
-    float domainRadius = 0.0f;
+    float domainRadius = 5.0f;
     if (rootMonadPtr)
     {
         Monad* iterator = rootMonadPtr;
@@ -1265,4 +1265,5 @@ int main(void)
 
     return 0;
 }
+
 
