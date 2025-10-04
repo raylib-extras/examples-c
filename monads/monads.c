@@ -1224,7 +1224,7 @@ int main(void)
                         else if (selectedLink && selectedMonadDepth + 1 == mainResult.resultDepth && selectedLink->endMonad != mainResult.resultMonad)
                         {
                             Link* newLink = AddLink(selectedLink->startMonad , mainResult.resultMonad , selectedMonad );
-                            if (newLink && RemoveLink(selectedLink , selectedMonad));
+                            if (newLink && RemoveLink(selectedLink , selectedMonad))
                             {
                                 selectedLink = newLink;
                                 strcpy(monadLog, "Changed link end object to [");
@@ -1265,5 +1265,6 @@ int main(void)
 
     return 0;
 }
+
 
 
