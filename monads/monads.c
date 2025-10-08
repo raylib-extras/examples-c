@@ -236,9 +236,7 @@ struct Link* AddLink(Monad* start, Monad* end, Monad* containingMonadPtr)
         do
         {
             if ((iterator->startMonad == start) && (iterator->endMonad == end))
-            {
                 return NULL;
-            }
             iterator = iterator->next;
         } while (iterator != rootPtr);
     }
@@ -309,22 +307,14 @@ Vector2 DrawDualBeziers(Vector2 startV2 , Vector2 endV2 , Color colorCode , Colo
     Vector2 midPoint = Vector2Lerp(startV2, endV2, MONAD_LINK_MIDDLE_LERP);
     float zeroDistance = startV2.x - endV2.x;
     if (zeroDistance > 0.0 && zeroDistance <= 30.0f)
-    {
         midPoint.x += 30.0f - zeroDistance;
-    }
     else if (zeroDistance <= 0.0 && zeroDistance >= -30.0f)
-    {
         midPoint.x -= 30.0f + zeroDistance;
-    }
     zeroDistance = startV2.y - endV2.y;
     if (zeroDistance > 0.0 && zeroDistance <= 30.0f)
-    {
         midPoint.y += 30.0f - zeroDistance;
-    }
     else if (zeroDistance <= 0.0 && zeroDistance >= -30.0f)
-    {
         midPoint.y -= 30.0f + zeroDistance;
-    }
     DrawLineBezier(startV2, midPoint, thick1, colorCode);
     DrawLineBezier(midPoint, endV2, thick2, colorCode2);
     return midPoint;
@@ -343,9 +333,7 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, u
     activeResult.resultKey = (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) ? RESULT_CLICK : ((IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) ? RESULT_RCLICK : RESULT_NONE);
     activeResult.resultDepth = functionDepth;
     if ((functionDepth >= selectedDepth) && CheckCollisionPointCircle(GetMousePosition(), MonadPtr->position, 30.0f))
-    {
         activeResult.resultMonad = MonadPtr;
-    }
 
     //iterate through the functors in the category.
     Link* rootLinkPtr = MonadPtr->rootSubLink;
@@ -384,9 +372,7 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, u
             if ((iterator->startMonad->deleteFrame >= DELETE_POSTONLYLINK) || (iterator->endMonad->deleteFrame >= DELETE_POSTONLYLINK))
             {
                 if (RemoveLink(iterator, MonadPtr) && !(rootLinkPtr = MonadPtr->rootSubLink))
-                {
                     break;
-                }
             }
             iterator = nextSaved;
 
@@ -402,7 +388,6 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, u
         do
         {
             Monad* next = iterator->next;
-
             if (iterator->deleteFrame >= DELETE_FINAL)
             {
                 if (RemoveMonad(iterator, MonadPtr) && !(rootMonadPtr = MonadPtr->rootSubMonads))
@@ -836,9 +821,7 @@ char* InterpretLinksRecursive(Monad* selectedMonad , ParentedMonad parentInfo , 
                         do
                         {
                             if (!strcmp(GenerateIDMalloc(startIndex) , payload))
-                            {
                                 break;
-                            }
                             findStartIterator = findStartIterator->next;
                             startIndex++;
                         } while (findStartIterator != rootMonadPtr);
@@ -863,9 +846,7 @@ char* InterpretLinksRecursive(Monad* selectedMonad , ParentedMonad parentInfo , 
                         do
                         {
                             if (!strcmp(GenerateIDMalloc(endIndex) , payload))
-                            {
                                 break;
-                            }
                             findEnderIterator = findEnderIterator->next;
                             endIndex++;
                         } while (findEnderIterator != rootEnderIterator);
@@ -1243,9 +1224,7 @@ int main(void)
             selectDrag = true;
         }
         else
-        {
             selectDrag = false;
-        }
 
         float mouseMove = GetMouseWheelMove();
         if (mouseMove != 0)
@@ -1265,6 +1244,3 @@ int main(void)
 
     return 0;
 }
-
-
-
