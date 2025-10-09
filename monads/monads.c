@@ -236,9 +236,7 @@ struct Link* AddLink(Monad* start, Monad* end, Monad* containingMonadPtr)
         do
         {
             if ((iterator->startMonad == start) && (iterator->endMonad == end))
-            {
                 return NULL;
-            }
             iterator = iterator->next;
         } while (iterator != rootPtr);
     }
@@ -309,22 +307,14 @@ Vector2 DrawDualBeziers(Vector2 startV2 , Vector2 endV2 , Color colorCode , Colo
     Vector2 midPoint = Vector2Lerp(startV2, endV2, MONAD_LINK_MIDDLE_LERP);
     float zeroDistance = startV2.x - endV2.x;
     if (zeroDistance > 0.0 && zeroDistance <= 30.0f)
-    {
         midPoint.x += 30.0f - zeroDistance;
-    }
     else if (zeroDistance <= 0.0 && zeroDistance >= -30.0f)
-    {
         midPoint.x -= 30.0f + zeroDistance;
-    }
     zeroDistance = startV2.y - endV2.y;
     if (zeroDistance > 0.0 && zeroDistance <= 30.0f)
-    {
         midPoint.y += 30.0f - zeroDistance;
-    }
     else if (zeroDistance <= 0.0 && zeroDistance >= -30.0f)
-    {
         midPoint.y -= 30.0f + zeroDistance;
-    }
     DrawLineBezier(startV2, midPoint, thick1, colorCode);
     DrawLineBezier(midPoint, endV2, thick2, colorCode2);
     return midPoint;
@@ -343,9 +333,7 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, u
     activeResult.resultKey = (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) ? RESULT_CLICK : ((IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) ? RESULT_RCLICK : RESULT_NONE);
     activeResult.resultDepth = functionDepth;
     if ((functionDepth >= selectedDepth) && CheckCollisionPointCircle(GetMousePosition(), MonadPtr->position, 30.0f))
-    {
         activeResult.resultMonad = MonadPtr;
-    }
 
     //iterate through the functors in the category.
     Link* rootLinkPtr = MonadPtr->rootSubLink;
@@ -384,9 +372,7 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, u
             if ((iterator->startMonad->deleteFrame >= DELETE_POSTONLYLINK) || (iterator->endMonad->deleteFrame >= DELETE_POSTONLYLINK))
             {
                 if (RemoveLink(iterator, MonadPtr) && !(rootLinkPtr = MonadPtr->rootSubLink))
-                {
                     break;
-                }
             }
             iterator = nextSaved;
 
@@ -395,14 +381,13 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, u
 
     //iterate through the objects with this object treated as a category.
     Monad* rootMonadPtr = MonadPtr->rootSubMonads;
-    float domainRadius = 0.0f;
+    float domainRadius = 5.0f;
     if (rootMonadPtr)
     {
         Monad* iterator = rootMonadPtr;
         do
         {
             Monad* next = iterator->next;
-
             if (iterator->deleteFrame >= DELETE_FINAL)
             {
                 if (RemoveMonad(iterator, MonadPtr) && !(rootMonadPtr = MonadPtr->rootSubMonads))
@@ -575,7 +560,6 @@ char* PruneForbiddenCharactersMalloc(char* name)
 typedef struct DepthResult
 {
     Monad* containerMonad;
-    Monad* cousinMonad;
     Monad* sharedMonad; //highest point where both container and cousin can be both traced to.
     unsigned int depth;
     unsigned int sharedDepth;
@@ -583,9 +567,7 @@ typedef struct DepthResult
 DepthResult FindDepthOfObject(Monad* selectedMonad , Monad* findMonad , Monad* findCousinMonad , unsigned int Depth)
 {
     if (selectedMonad == findMonad)
-    {
-        return (DepthResult){NULL , NULL , NULL , Depth , -1};
-    }
+        return (DepthResult){NULL , NULL , Depth , -1};
     Monad* rootMonadPtr = selectedMonad->rootSubMonads;
     if (rootMonadPtr)
     {
@@ -596,9 +578,7 @@ DepthResult FindDepthOfObject(Monad* selectedMonad , Monad* findMonad , Monad* f
             if (result.depth != -1)
             {
                 if (!result.containerMonad)
-                {
                     result.containerMonad = selectedMonad;
-                }
                 if (result.sharedDepth == -1 && findCousinMonad)
                 {
                     Monad* iterator2 = rootMonadPtr;
@@ -608,7 +588,6 @@ DepthResult FindDepthOfObject(Monad* selectedMonad , Monad* findMonad , Monad* f
                         if (cousinResult.depth != -1) // If it's found, simply
                         {
                             result.sharedMonad = selectedMonad;
-                            result.cousinMonad = cousinResult.containerMonad;
                             result.sharedDepth = Depth;
                             break;
                         }
@@ -620,7 +599,7 @@ DepthResult FindDepthOfObject(Monad* selectedMonad , Monad* findMonad , Monad* f
             iterator = iterator->next;
         } while (iterator != rootMonadPtr);
     }
-    return (DepthResult){NULL , NULL , NULL , -1 , -1};
+    return (DepthResult){NULL , NULL , -1 , -1};
 }
 
 char* ChainCarrotAfterJumpStringRecursiveMalloc(Monad* sharedMonad , Monad* endMonad)
@@ -687,8 +666,6 @@ void PrintMonadsRecursive(Monad* MonadPtr, Monad* OriginalMonad, char** outRef)
             {
                 unsigned int jumpBy = depthResult.depth - depthResult.sharedDepth - 1;
                 unsigned int subIndex = 0;
-                printf("DR container:%p cousin:%p shared:%p depth: %i shared depth: %i\n", depthResult.containerMonad , depthResult.cousinMonad , depthResult.sharedMonad , depthResult.depth , depthResult.sharedDepth);    
-                printf("%p->%p needs a jump by: %i\n" , iterator->startMonad , iterator->endMonad , jumpBy);
                 Monad* matchingIterator = rootMonadPtr;
                 do
                 {
@@ -844,9 +821,7 @@ char* InterpretLinksRecursive(Monad* selectedMonad , ParentedMonad parentInfo , 
                         do
                         {
                             if (!strcmp(GenerateIDMalloc(startIndex) , payload))
-                            {
                                 break;
-                            }
                             findStartIterator = findStartIterator->next;
                             startIndex++;
                         } while (findStartIterator != rootMonadPtr);
@@ -871,9 +846,7 @@ char* InterpretLinksRecursive(Monad* selectedMonad , ParentedMonad parentInfo , 
                         do
                         {
                             if (!strcmp(GenerateIDMalloc(endIndex) , payload))
-                            {
                                 break;
-                            }
                             findEnderIterator = findEnderIterator->next;
                             endIndex++;
                         } while (findEnderIterator != rootEnderIterator);
@@ -1053,7 +1026,6 @@ int main(void)
                     out[0] = '\0';
                     PrintMonadsRecursive(selectedMonad , selectedMonad , &out);
                     SetClipboardText(out);
-                    printf("%s\n",out);
                     free(out);
                     strcpy(monadLog, "Copied text data from [");
                     strcat(monadLog, selectedMonad->name);
@@ -1232,9 +1204,14 @@ int main(void)
                         }
                         else if (selectedLink && selectedMonadDepth + 1 == mainResult.resultDepth && selectedLink->endMonad != mainResult.resultMonad)
                         {
-                            strcpy(monadLog, "Changed link end object to [");
-                            strcat(monadLog, (selectedLink->endMonad = mainResult.resultMonad)->name);
-                            strcat(monadLog, "].");
+                            Link* newLink = AddLink(selectedLink->startMonad , mainResult.resultMonad , selectedMonad );
+                            if (newLink && RemoveLink(selectedLink , selectedMonad))
+                            {
+                                selectedLink = newLink;
+                                strcpy(monadLog, "Changed link end object to [");
+                                strcat(monadLog, selectedLink->endMonad->name);
+                                strcat(monadLog, "].");
+                            }
                         }
                     }
                 }
@@ -1247,9 +1224,7 @@ int main(void)
             selectDrag = true;
         }
         else
-        {
             selectDrag = false;
-        }
 
         float mouseMove = GetMouseWheelMove();
         if (mouseMove != 0)
