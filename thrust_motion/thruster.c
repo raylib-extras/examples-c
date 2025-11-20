@@ -9,6 +9,7 @@ Simple example showing the math for thrust based motion
 bool SearchAndSetResourceDir(const char* folderName);
 
 bool UseGravity = false;
+bool UseFriction = false;
 
 int main()
 {
@@ -27,6 +28,9 @@ int main()
     {
         if (IsKeyPressed(KEY_SPACE))
             UseGravity = !UseGravity;
+
+        if (IsKeyPressed(KEY_F))
+            UseFriction = !UseFriction;
 
         // rotation
         float rotationDelta = 180.0f * GetFrameTime();
@@ -47,14 +51,25 @@ int main()
         // see how much thrust we are going to add to our motion vector
         Vector2 thrustVector = Vector2Scale(shipFacing, thrustAmount);
 
+        // add thrust to our velocity (units/second)
+        shipVelocity = Vector2Add(shipVelocity, thrustVector);
+
         // add in gravity
         Vector2 gravity = { 0, 50.0f };
 
         if (UseGravity)
             shipVelocity = Vector2Add(shipVelocity, Vector2Scale(gravity, GetFrameTime()));
 
-        // add thrust to our velocity (units/second)
-        shipVelocity = Vector2Add(shipVelocity, thrustVector);
+        // add friction
+        if (UseFriction)
+         {
+            float frictionAmount = 100.0f * GetFrameTime();
+            if (frictionAmount > Vector2Length(shipVelocity))
+                frictionAmount = Vector2Length(shipVelocity);
+
+            Vector2 frictionVector = Vector2Scale(Vector2Normalize(shipVelocity), -frictionAmount);
+            shipVelocity = Vector2Add(shipVelocity, frictionVector);
+        }
 
         // clamp the velocity to some sane limit
         if (Vector2Length(shipVelocity) > 1000)
@@ -129,6 +144,11 @@ int main()
             DrawText("Gravity is ON (Space)", 10, 10, 20, GREEN);
         else
             DrawText("Gravity is OFF (Space)", 10, 10, 20, RED);
+
+        if (UseFriction)
+            DrawText("Friction is ON (F)", 10, 40, 20, GREEN);
+        else
+            DrawText("Friction is OFF (F)", 10, 40, 20, RED);
 
         EndDrawing();
     }
