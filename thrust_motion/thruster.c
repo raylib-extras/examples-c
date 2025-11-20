@@ -55,11 +55,8 @@ int main()
         shipVelocity = Vector2Add(shipVelocity, thrustVector);
 
         // add in gravity
-        Vector2 gravity = { 0, 50.0f };
-
-        if (UseGravity)
-            shipVelocity = Vector2Add(shipVelocity, Vector2Scale(gravity, GetFrameTime()));
-
+        Vector2 gravity = { 0, 150.0f };
+  
         // add friction
         if (UseFriction)
          {
@@ -71,11 +68,14 @@ int main()
             shipVelocity = Vector2Add(shipVelocity, frictionVector);
         }
 
+        if (UseGravity)
+            shipVelocity = Vector2Add(shipVelocity, Vector2Scale(gravity, GetFrameTime()));
+
         // clamp the velocity to some sane limit
         if (Vector2Length(shipVelocity) > 1000)
             shipVelocity = Vector2Scale(Vector2Normalize(shipVelocity), 1000);
 
-        // if you want to add some friction, do it here, slowly reduce the lenght of shipVelocity
+        // if you want to add some friction, do it here, slowly reduce the length of shipVelocity
 
         // position
         // update our position based on our velocity for this frame
