@@ -9,7 +9,7 @@
 *   Example licensed under an unmodified zlib/libpng license, which is an OSI-certified,
 *   BSD-like license that allows static linking with closed source software
 *
-*   Copyright (c) 2025 James R, (@<H-Art-Src>)
+*   Copyright (c) 2026 James R, (@<H-Art-Src>)
 *
 ********************************************************************************************/
 /*
@@ -33,6 +33,7 @@ The following commands need a control key held down to function:
 -Key 'B' to delete all connections from and to a selected object.
 -Key 'T' will rename the selected object to your clipboard contents.
 -Key 'C' will copy the selected object and recursively for its sub-objects as text data into your clipboard.
+-Key 'X' will do the above then delete it (Cut).
 -Key 'V' will paste the text data recursively as a new object contained by the selected object.
 -Key 'A' will advance the selected link's end object to its neighboring one in its stead.
 Holding a shift key will always select the object you right clicked, and if you added the object it will move you down to it's depth.
@@ -66,7 +67,6 @@ typedef struct Monad
     char name[MAX_MONAD_NAME_SIZE];
     Vector2 position;
     struct Monad* rootSubMonads;
-    struct Monad* prev;
     struct Monad* next;
     struct Link* rootSubLink;
     char deleteFrame;
@@ -76,7 +76,6 @@ typedef struct Link
 {
     struct Monad* startMonad;
     struct Monad* endMonad;
-    struct Link* prev;
     struct Link* next;
 } Link;
 
@@ -115,35 +114,22 @@ struct Monad* AddMonad(Vector2 canvasPosition, Monad* containingMonadPtr)
     newMonadPtr->rootSubMonads = NULL;
     newMonadPtr->rootSubLink = NULL;
     newMonadPtr->deleteFrame = DELETE_OFF;
-    newMonadPtr->name[0] = (containingMonadPtr->rootSubMonads) ? containingMonadPtr->rootSubMonads->prev->name[0] + 1 : 'A';
     newMonadPtr->name[1] = 0;
 
     //insert new Monad in list entry.
     Monad* rootPtr = containingMonadPtr->rootSubMonads;
     if (rootPtr) //has entries.
     {
-        Monad* rootNextPtrUnchanged = rootPtr->next;
-        Monad* rootPrevPtrUnchanged = rootPtr->prev;
-        if ((rootPtr == rootNextPtrUnchanged) || (rootPtr == rootPrevPtrUnchanged)) //after one entry
-        {
-            newMonadPtr->next = rootPtr;
-            newMonadPtr->prev = rootPtr;
-            rootPtr->next = newMonadPtr;
-            rootPtr->prev = newMonadPtr;
-        }
-        else //after two or more entries.
-        {
-            newMonadPtr->next = rootPtr;
-            newMonadPtr->prev = rootPrevPtrUnchanged;
-            rootPtr->prev = newMonadPtr;
-            rootPrevPtrUnchanged->next = newMonadPtr;
-        }
+        newMonadPtr->name[0] = containingMonadPtr->rootSubMonads->name[0] + 1;
+        newMonadPtr->next = rootPtr->next;
+        rootPtr->next = newMonadPtr;
+        containingMonadPtr->rootSubMonads = newMonadPtr;
     }
     else //after zero entries
     {
         containingMonadPtr->rootSubMonads = rootPtr = newMonadPtr;
         rootPtr->next = newMonadPtr;
-        rootPtr->prev = newMonadPtr;
+        newMonadPtr->name[0] = 'A';
     }
 
     //move containing Monad
@@ -188,7 +174,9 @@ bool RemoveMonad(Monad* MonadPtr, Monad* containingMonadPtr)
     Monad* rootMonad = containingMonadPtr->rootSubMonads;
     if (rootMonad)
     {
-        Monad* iterator = rootMonad;
+        Monad* afterRoot = rootMonad->next;
+        Monad* prev = rootMonad;
+        Monad* iterator = afterRoot;
         do
         {
             if (iterator == MonadPtr)
@@ -197,13 +185,13 @@ bool RemoveMonad(Monad* MonadPtr, Monad* containingMonadPtr)
                     containingMonadPtr->rootSubMonads = NULL;
                 else if (rootMonad == iterator) //is root and NOT sole sub Monad.
                     containingMonadPtr->rootSubMonads = rootMonad->next;
-                iterator->next->prev = iterator->prev;
-                iterator->prev->next = iterator->next;
+                prev->next = iterator->next;
                 RemoveSubMonadsRecursive(iterator);
                 return true;
             }
+            prev = iterator;
             iterator = iterator->next;
-        } while (iterator != rootMonad);
+        } while (iterator != afterRoot);
     }
     return false;
 }
@@ -250,27 +238,21 @@ struct Link* AddLink(Monad* start, Monad* end, Monad* containingMonadPtr)
     if (rootPtr) //has entries.
     {
         Link* rootNextPtrUnchanged = rootPtr->next;
-        Link* rootPrevPtrUnchanged = rootPtr->prev;
-        if ((rootPtr == rootNextPtrUnchanged) || (rootPtr == rootPrevPtrUnchanged)) //after one entry
+        if (rootPtr == rootNextPtrUnchanged) //after one entry
         {
             newLinkPtr->next = rootPtr;
-            newLinkPtr->prev = rootPtr;
             rootPtr->next = newLinkPtr;
-            rootPtr->prev = newLinkPtr;
         }
         else //after two or more entries.
         {
-            newLinkPtr->next = rootPtr;
-            newLinkPtr->prev = rootPrevPtrUnchanged;
-            rootPtr->prev = newLinkPtr;
-            rootPrevPtrUnchanged->next = newLinkPtr;
+            newLinkPtr->next = rootNextPtrUnchanged;
+            rootPtr->next = newLinkPtr;
         }
     }
     else //after zero entries
     {
         containingMonadPtr->rootSubLink = rootPtr = newLinkPtr;
         rootPtr->next = newLinkPtr;
-        rootPtr->prev = newLinkPtr;
     }
     return newLinkPtr;
 }
@@ -281,7 +263,9 @@ bool RemoveLink(Link* linkPtr, Monad* containingMonadPtr)
     Link* rootLink = containingMonadPtr->rootSubLink;
     if (rootLink)
     {
-        Link* iterator = rootLink;
+        Link* afterRoot = rootLink->next;
+        Link* prev = rootLink;
+        Link* iterator = afterRoot;
         do
         {
             if (iterator == linkPtr)
@@ -290,13 +274,13 @@ bool RemoveLink(Link* linkPtr, Monad* containingMonadPtr)
                     containingMonadPtr->rootSubLink = NULL;
                 else if (rootLink == iterator) //is root and NOT sole sub Link.
                     containingMonadPtr->rootSubLink = rootLink->next;
-                iterator->next->prev = iterator->prev;
-                iterator->prev->next = iterator->next;
+                prev->next = iterator->next;
                 free(iterator);
                 return true;
             }
+            prev = iterator;
             iterator = iterator->next;
-        } while (iterator != rootLink);
+        } while (iterator != afterRoot);
     }
     return false;
 }
@@ -326,7 +310,7 @@ Vector2 DrawDualBeziers(Vector2 startV2 , Vector2 endV2 , Color colorCode , Colo
 #define PRESCOPE functionDepth < selectedDepth
 
 //Renders all Monads and Link. Returns activated Monad, it's container, if any and the depth. MonadPtr must not be null.
-struct ActiveResult RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, unsigned int selectedDepth)
+struct ActiveResult* RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, unsigned int selectedDepth)
 {
     //check collision with mouse, generate first part of activeResult.
     ActiveResult activeResult = (ActiveResult){ 0 };
@@ -407,25 +391,26 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, u
             }
 
             //--------------------------------
-            ActiveResult activeOverride = RecursiveDraw(iterator, functionDepth + 1, selectedDepth);
+            ActiveResult* activeOverrideMallocPtr = RecursiveDraw(iterator, functionDepth + 1, selectedDepth);
             //--------------------------------
-
-            if (activeOverride.resultMonad && !activeResult.resultLink)
+            if (activeOverrideMallocPtr)
             {
-                activeResult = activeOverride;
+                if (activeOverrideMallocPtr->resultMonad && !activeResult.resultLink)
+                {
+                    memcpy(&activeResult, activeOverrideMallocPtr, sizeof(ActiveResult));
+                }
+                else if (activeOverrideMallocPtr->resultLink)
+                {
+                    activeResult.resultLink = activeOverrideMallocPtr->resultLink;
+                    activeResult.resultMonad = MonadPtr;
+                }
+                free(activeOverrideMallocPtr);
             }
-            else if (activeOverride.resultLink)
-            {
-                activeResult.resultLink = activeOverride.resultLink;
-                activeResult.resultMonad = MonadPtr;
-            }
-
             float newdomainRadius = Vector2Distance(MonadPtr->position , iterator->position);
             if (newdomainRadius > domainRadius)
             {
                 domainRadius = newdomainRadius;
             }
-
             iterator = next;
         } while (iterator != rootMonadPtr);
     }
@@ -434,7 +419,7 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, u
     if (MonadPtr->deleteFrame >= DELETE_PRELINK)
     {
         MonadPtr->deleteFrame++;
-        return (ActiveResult) { 0 };
+        return NULL;
     }
     else if (MonadPtr->deleteFrame >= DELETE_POSTONLYLINK)
     {
@@ -443,7 +428,7 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, u
 
     //cancel any more drawing.
     if (OUTSCOPED)
-        return (ActiveResult) { 0 };
+        return NULL;
 
     //we have returned back to the container, since this is null, we know that this is the container.
     if (!activeResult.resultContainerMonad && (activeResult.resultMonad != MonadPtr))
@@ -467,7 +452,7 @@ struct ActiveResult RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, u
     if (activeResult.resultMonad == MonadPtr)
         DrawCircleLinesV(MonadPtr->position, 20.0f, ORANGE);
 
-    return activeResult;
+    return memcpy(malloc(sizeof(ActiveResult)) , &activeResult , sizeof(ActiveResult));
 }
 
 enum discardAppend
@@ -631,6 +616,7 @@ char* ChainCarrotAfterJumpStringRecursiveMalloc(Monad* sharedMonad , Monad* endM
     return ret;
 }
 
+//TODO this is printing out monads out in the wrong order.
 void PrintMonadsRecursive(Monad* MonadPtr, Monad* OriginalMonad, char** outRef)
 {
     char* out = *outRef;
@@ -643,6 +629,7 @@ void PrintMonadsRecursive(Monad* MonadPtr, Monad* OriginalMonad, char** outRef)
     Monad* rootMonadPtr = MonadPtr->rootSubMonads;
     if (rootMonadPtr)
     {
+        rootMonadPtr = rootMonadPtr->next; //Start at "index 0", root always points at last
         Monad* iterator = rootMonadPtr;
         do
         {
@@ -758,6 +745,10 @@ char* InterpretLinksRecursive(Monad* selectedMonad , ParentedMonad parentInfo , 
     char* progress = (char*)in + 1; //adding 1 assuming it's coming right after a '['.
     char* payload = malloc(1);
     Monad* rootMonadPtr = selectedMonad->rootSubMonads;
+    if (rootMonadPtr)
+    {
+        rootMonadPtr = rootMonadPtr->next;
+    }
     Monad* subIterator = rootMonadPtr;
     Monad* findStartIterator = NULL;
     Monad* findEnderIterator = NULL;
@@ -790,22 +781,24 @@ char* InterpretLinksRecursive(Monad* selectedMonad , ParentedMonad parentInfo , 
                 reverseLink = true;
             break;
             case ';':
-                findEnderIterator = findEnderIterator->rootSubMonads;
-                Monad* rootEnderIterator = findEnderIterator;
-                unsigned int endIndex = 0;
-                do
+                if(findEnderIterator && (findEnderIterator = findEnderIterator->rootSubMonads) && step == LINK)
                 {
-                    if (!strcmp(GenerateIDMalloc(endIndex) , payload))
+                    Monad* rootEnderIterator = findEnderIterator;
+                    unsigned int endIndex = 0;
+                    do
                     {
-                        break;
-                    }
-                    findEnderIterator = findEnderIterator->next;
-                    endIndex++;
-                } while (findEnderIterator != rootEnderIterator);
-                if (reverseLink)
-                    AddLink(findEnderIterator , findStartIterator , selectedMonad);
-                else
-                    AddLink(findStartIterator , findEnderIterator , selectedMonad);
+                        if (!strcmp(GenerateIDMalloc(endIndex) , payload))
+                        {
+                            break;
+                        }
+                        findEnderIterator = findEnderIterator->next;
+                        endIndex++;
+                    } while (findEnderIterator != rootEnderIterator);
+                    if (reverseLink)
+                        AddLink(findEnderIterator , findStartIterator , selectedMonad);
+                    else
+                        AddLink(findStartIterator , findEnderIterator , selectedMonad);
+                }
                 free(payload);
                 payload = malloc(1);
                 payload[0] = '\0';
@@ -813,43 +806,46 @@ char* InterpretLinksRecursive(Monad* selectedMonad , ParentedMonad parentInfo , 
                 reverseLink = false;
             break;
             case '>':
-                switch (payloadIndex)
+                if (rootMonadPtr && step == LINK)
                 {
-                    case 0:
-                        findStartIterator = rootMonadPtr;
-                        unsigned int startIndex = 0;
-                        do
-                        {
-                            if (!strcmp(GenerateIDMalloc(startIndex) , payload))
-                                break;
-                            findStartIterator = findStartIterator->next;
-                            startIndex++;
-                        } while (findStartIterator != rootMonadPtr);
-                        payloadIndex++;
-                    break;
-                    case 1://jump
-                        findEnderIterator = selectedMonad;
-                        ParentedMonad* currentChain = &parentInfo;
-                        unsigned int jumpIndex = 0;
-                        while (currentChain && strcmp(GenerateIDMalloc(jumpIndex) , payload)) 
-                        {
-                            findEnderIterator = currentChain->monad;
-                            currentChain = currentChain->parentChain;
-                            jumpIndex++;
-                        }
-                        payloadIndex++;
-                    break;
-                    case 2:
-                        findEnderIterator = findEnderIterator->rootSubMonads;
-                        Monad* rootEnderIterator = findEnderIterator;
-                        unsigned int endIndex = 0;
-                        do
-                        {
-                            if (!strcmp(GenerateIDMalloc(endIndex) , payload))
-                                break;
-                            findEnderIterator = findEnderIterator->next;
-                            endIndex++;
-                        } while (findEnderIterator != rootEnderIterator);
+                    switch (payloadIndex)
+                    {
+                        case 0:
+                            findStartIterator = rootMonadPtr;
+                            unsigned int startIndex = 0;
+                            do
+                            {
+                                if (!strcmp(GenerateIDMalloc(startIndex) , payload))
+                                    break;
+                                findStartIterator = findStartIterator->next;
+                                startIndex++;
+                            } while (findStartIterator != rootMonadPtr);
+                            payloadIndex++;
+                        break;
+                        case 1://jump
+                            findEnderIterator = selectedMonad;
+                            ParentedMonad* currentChain = &parentInfo;
+                            unsigned int jumpIndex = 0;
+                            while (currentChain && currentChain->monad && currentChain->parentChain && strcmp(GenerateIDMalloc(jumpIndex) , payload)) 
+                            {
+                                findEnderIterator = currentChain->monad;
+                                currentChain = currentChain->parentChain;
+                                jumpIndex++;
+                            }
+                            payloadIndex++;
+                        break;
+                        case 2:
+                            findEnderIterator = findEnderIterator->rootSubMonads;
+                                Monad* rootEnderIterator = findEnderIterator;
+                                unsigned int endIndex = 0;
+                                do
+                                {
+                                    if (!strcmp(GenerateIDMalloc(endIndex) , payload))
+                                        break;
+                                    findEnderIterator = findEnderIterator->next;
+                                    endIndex++;
+                                } while (findEnderIterator != rootEnderIterator);
+                    }
                 }
                 free(payload);
                 payload = malloc(1);
@@ -900,7 +896,7 @@ int main(void)
     int screenWidth = 800;
     int screenHeight = 800;
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
-    InitWindow(screenWidth, screenHeight, "Monad");
+    InitWindow(screenWidth, screenHeight, "Monads");
     SetTargetFPS(60);
     //--------------------------------------------------------------------------------------
 
@@ -911,7 +907,6 @@ int main(void)
 
     GodMonad->position.x = screenWidth / 2.0f;
     GodMonad->position.y = screenHeight / 2.0f;
-    GodMonad->prev = GodMonad;
     GodMonad->next = GodMonad;
     strcpy(GodMonad->name, "Monad 0");
 
@@ -928,7 +923,7 @@ int main(void)
     //--------------------------------------------------------------------------------------
 
     // Testing
-    //--------------------------------------------------------------------------------------    
+    //--------------------------------------------------------------------------------------
     MonadsExample(GodMonad);
     //--------------------------------------------------------------------------------------
 
@@ -945,6 +940,7 @@ int main(void)
         }
 
         mouseV2 = GetMousePosition();
+        bool isCutting = IsKeyPressed(KEY_X);
         if(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT))
         {
             strcpy(monadLog , "");
@@ -1017,7 +1013,7 @@ int main(void)
                     strcat(monadLog, "].");
                     selectedMonad->deleteFrame = DELETE_ONLYLINK;
                 }
-                else if (IsKeyPressed(KEY_C))
+                else if (IsKeyPressed(KEY_C) || isCutting)
                 {
                     BeginDrawing();
                     DrawText("COPYING", screenHeight/2 - 100, screenWidth/2 - 100, 48, ORANGE);
@@ -1027,9 +1023,32 @@ int main(void)
                     PrintMonadsRecursive(selectedMonad , selectedMonad , &out);
                     SetClipboardText(out);
                     free(out);
-                    strcpy(monadLog, "Copied text data from [");
-                    strcat(monadLog, selectedMonad->name);
-                    strcat(monadLog, "] to clipboard.");   
+                    if (isCutting)
+                    {
+                        if (selectedMonad == GodMonad)
+                        {
+                            strcpy(monadLog, "Cannot cut [");
+                            strcat(monadLog, selectedMonad->name);
+                            strcat(monadLog, "]: Is root. Copied instead.");
+                        }
+                        else
+                        {
+                            if (!selectedMonad->deleteFrame)
+                            {
+                                strcpy(monadLog, "Cut object [");
+                                strcat(monadLog, selectedMonad->name);
+                                strcat(monadLog, "].");
+                                selectedMonad->deleteFrame = DELETE_PRELINK;
+                            }
+                            selectedMonad = NULL;
+                        }
+                    }
+                    else
+                    {
+                        strcpy(monadLog, "Copied text data from [");
+                        strcat(monadLog, selectedMonad->name);
+                        strcat(monadLog, "] to clipboard.");
+                    }
                 }
                 else if (IsKeyPressed(KEY_V) && IsVector2OnScreen(mouseV2))
                 {
@@ -1040,6 +1059,7 @@ int main(void)
                     InterpretAddMonadsRecursive(pastedOverMonad , GetClipboardText());
                     InterpretLinksRecursive(pastedOverMonad , (ParentedMonad){NULL , NULL} , GetClipboardText());
                     selectedMonad = pastedOverMonad;
+                    selectedMonadDepth++;
                     pastedOverMonad->position = mouseV2;
                     strcpy(monadLog, "Pasted text data in [");
                     strcat(monadLog, selectedMonad->name);
@@ -1102,7 +1122,13 @@ int main(void)
 
         BeginDrawing();
         ClearBackground(RAYWHITE);
-        mainResult = RecursiveDraw(GodMonad, 0, selectedDepth);
+        mainResult = (ActiveResult) { 0 };
+        ActiveResult* mainResultMallocPtr = RecursiveDraw(GodMonad, 0, selectedDepth);
+        if (mainResultMallocPtr)
+        {
+            memcpy(&mainResult , mainResultMallocPtr , sizeof(ActiveResult));
+            free(mainResultMallocPtr);
+        }
         DrawText(monadLog, 48, 8, 20, GRAY);
 
         if (selectedMonad)
@@ -1244,3 +1270,4 @@ int main(void)
 
     return 0;
 }
+
