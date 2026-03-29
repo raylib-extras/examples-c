@@ -32,9 +32,18 @@
 #include "raylib.h"
 #include "raymath.h"
 
+
+#if defined(__cplusplus)
+extern "C" { // disable name mangling for C++
+#endif
+
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
+
+#if defined(__cplusplus)
+}
+#endif
 
 typedef struct 
 {
@@ -207,12 +216,14 @@ void LoadResources()
 
 void SetupGame()
 {
-    Player.Position = (Vector2){ GetScreenWidth() * 0.5f, GetScreenHeight() * 0.5f };
+    Vector2 centerScreen = { GetScreenWidth() * 0.5f, GetScreenHeight() * 0.5f };
+    Player.Position = centerScreen;
     Player.Angle = 0;
 
     for (int i = 0; i < MAX_ENIMIES; i++)
     {
-        Enemies[i].Position = (Vector2){ (float)GetRandomValue(10,GetScreenWidth() - 10), (float)GetRandomValue(10,GetScreenHeight() - 10) };
+        Vector2 randomPos = { (float)GetRandomValue(10,GetScreenWidth() - 10), (float)GetRandomValue(10,GetScreenHeight() - 10) };
+        Enemies[i].Position = randomPos;
         Enemies[i].Angle = (float)GetRandomValue(-180, 180);
         Enemies[i].ReloadTime = 0;
     }
@@ -239,7 +250,7 @@ void UpdatePlayer()
     if (IsKeyDown(KEY_D))
         Player.Angle += rotationSpeed;
 
-    Vector2 facingVector = (Vector2){ cosf(Player.Angle * DEG2RAD), sinf(Player.Angle * DEG2RAD) };
+    Vector2 facingVector = { cosf(Player.Angle * DEG2RAD), sinf(Player.Angle * DEG2RAD) };
 
     Vector2 movementVector = Vector2Scale(facingVector, GetFrameTime() * 200);
 
