@@ -196,8 +196,6 @@ void RunLuaScript(lua_State* luaState, const char* scriptFile)
 
     if (luaL_dofile(luaState, scriptFile) != LUA_OK)
     {
-	const char *err = lua_tostring(luaState, -1);
-	fprintf(stderr, "Lua error: %s\n", err);
 	lua_pop(luaState, 1);
     }
 }

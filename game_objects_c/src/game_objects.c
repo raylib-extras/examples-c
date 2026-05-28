@@ -21,7 +21,7 @@ void InitalizeGameObject(GameObject* object)
 GameObject* AddChildObject(GameObject* parent)
 {
 	if (parent == NULL)
-		return;
+		return NULL;
 
     parent->ChildCount++;
     parent->Children = realloc(parent->Children, sizeof(GameObject) * parent->ChildCount);
