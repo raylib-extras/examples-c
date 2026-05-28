@@ -194,12 +194,9 @@ void RunLuaScript(lua_State* luaState, const char* scriptFile)
     if (!scriptFile)
         return;
 
-    if (luaL_dofile(luaState, scriptFile) == LUA_OK)
+    if (luaL_dofile(luaState, scriptFile) != LUA_OK)
     {
-        if (lua_pcall(luaState, 0, 0, 0) == LUA_OK)
-        {
-            lua_pop(luaState, lua_gettop(luaState));
-        }
+	lua_pop(luaState, 1);
     }
 }
 
