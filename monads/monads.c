@@ -72,6 +72,7 @@ typedef struct Monad
     char deleteFrame;
 }  Monad;
 
+#define SELF_LINK_REGION 25.0f
 typedef struct Link
 {
     struct Monad* startMonad;
@@ -330,14 +331,14 @@ struct ActiveResult* RecursiveDraw(Monad* MonadPtr, unsigned int functionDepth, 
             {
                 Vector2 startV2 = iterator->startMonad->position;
                 bool linkHit = false;
+                float giantUpLerp = fmaxf(0.3f , fminf(350.0f , Vector2Distance(startV2 , GetMousePosition())) / 350.0f);
                 if (iterator->startMonad == iterator->endMonad)
                 {
-                    linkHit = CheckCollisionPointCircle(GetMousePosition(), Vector2Add(startV2, (Vector2) { 15.0f, 15.0f }), 30.0f);
-                    DrawRectangleV(startV2, (Vector2) { 10.0f, 10.0f }, (linkHit) ? RED : BLACK);
+                    linkHit = CheckCollisionPointCircle(GetMousePosition(), Vector2Add(startV2, (Vector2) { 30.0f, 30.0f }), 30.0f);
+                    DrawRectangleLinesEx((Rectangle){startV2.x, startV2.y, SELF_LINK_REGION, SELF_LINK_REGION} , 1.0f/giantUpLerp , (linkHit) ? RED : BLACK);
                 }
                 else
                 {
-                    float giantUpLerp = fmaxf(0.3f , fminf(350.0f , Vector2Distance(startV2 , GetMousePosition())) / 350.0f);
                     Vector2 midPoint = DrawDualBeziers(startV2 , iterator->endMonad->position , BLUE , SameCategory(iterator->endMonad, iterator->startMonad) ? BLACK : RED , 2.0f/giantUpLerp , 1.0f/giantUpLerp);
                     linkHit = CheckCollisionPointCircle(GetMousePosition() , midPoint , 30.0f);
                     if (linkHit)
@@ -924,7 +925,7 @@ int main(void)
 
     // Testing
     //--------------------------------------------------------------------------------------
-    MonadsExample(GodMonad);
+    MonadsExample(GodMonad);// Original example.
     //--------------------------------------------------------------------------------------
 
     // Main loop
@@ -938,7 +939,6 @@ int main(void)
             screenWidth = newScreenWidth;
             screenHeight = newScreenHeight;
         }
-
         mouseV2 = GetMousePosition();
         bool isCutting = IsKeyPressed(KEY_X);
         if(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT))
@@ -1151,7 +1151,7 @@ int main(void)
             Vector2 endNextV2 = selectedLink->endMonad->next->position;
             if (selectedLink->startMonad == selectedLink->endMonad)
             {
-                linkLocation = selectedLink->startMonad->position;
+                linkLocation = Vector2Add(selectedLink->startMonad->position, (Vector2){SELF_LINK_REGION, SELF_LINK_REGION});
             }
             else
             {
@@ -1188,7 +1188,7 @@ int main(void)
             case RESULT_RCLICK:
                 if (selectedMonad)
                 {
-                    if (mainResult.resultMonad && mainResult.resultContainerMonad && (selectedDepth + 1 == selectedMonadDepth))
+                    if (mainResult.resultMonad && mainResult.resultContainerMonad && (selectedDepth + 1 == selectedMonadDepth) && mainResult.resultDepth == selectedMonadDepth)
                     {
                         if (SameCategory(selectedMonad, mainResult.resultMonad))
                             selectedLink = AddLink(selectedMonad, mainResult.resultMonad, mainResult.resultContainerMonad);
@@ -1270,4 +1270,3 @@ int main(void)
 
     return 0;
 }
-
